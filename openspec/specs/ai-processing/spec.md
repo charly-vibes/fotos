@@ -46,6 +46,10 @@ The system SHALL include built-in regex patterns for the following PII types:
 | IP Address | `\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b` |
 | AWS ARN | `\barn:aws:[a-z0-9-]+:[a-z0-9-]*:\d{12}:` |
 
+> **Regex notation**: The `\|` characters in the API Key pattern represent regex alternation (`|`). The backslash is a Markdown table rendering artifact. Implementations MUST use unescaped `|` for alternation.
+
+> **Limitations**: These patterns are best-effort heuristics and will NOT catch all PII (e.g., names, addresses, non-US phone formats, obfuscated credentials). The UI SHOULD inform the user that auto-detection is not exhaustive and manual review is recommended before sharing screenshots.
+
 #### Scenario: Detect email addresses in screenshot
 - **WHEN** OCR extracts text containing an email address (e.g., `user@example.com`)
 - **THEN** the system SHALL return a match with `pii_type` set to `email` and the bounding box (`x`, `y`, `w`, `h`) of the matching text region
@@ -94,7 +98,14 @@ The system SHALL automatically create blur annotations at the coordinates of det
 
 ### Requirement: LLM Vision Analysis
 
-The system SHALL support sending a screenshot image with an optional text prompt to an LLM vision model for analysis. The system SHALL support the following providers: Claude (Anthropic), OpenAI, Gemini (Google), and Ollama (local). The system SHALL return the LLM response text, the model name used, and the token count.
+The system SHALL support sending a screenshot image with an optional text prompt to an LLM vision model for analysis. The system SHALL return the LLM response text, the model name used, and the token count.
+
+All LLM providers MUST implement a common `LlmProvider` async trait that defines:
+
+- `analyze(image: &[u8], prompt: &str, model: &str) -> Result<LlmResponse>` -- send image and prompt, return analysis
+- `name() -> &str` -- provider identifier string (e.g., `"claude"`, `"openai"`)
+
+The system SHALL ship with four built-in provider implementations: Claude (Anthropic), OpenAI, Gemini (Google), and Ollama (local). The `analyze_llm` command SHALL select the provider by name from a registry of available implementations. This trait-based design allows adding new providers without modifying the dispatch logic.
 
 #### Scenario: Analyze screenshot with Claude
 - **WHEN** the user invokes `analyze_llm` with provider set to `claude`
@@ -158,38 +169,85 @@ The system SHALL provide a set of built-in prompt templates for LLM vision analy
 
 ### Requirement: LLM Provider Configuration
 
-The system SHALL allow users to configure the model used for each LLM provider. For the Ollama provider, the system SHALL additionally allow configuration of the server URL and model name. All API keys MUST be stored in the OS keychain and SHALL NOT be stored in configuration files or localStorage.
+The system SHALL read all LLM provider configuration (model names, Ollama URL, API keys) from the settings and credentials defined in the **settings-credentials** spec. This spec does not re-define those values; the settings-credentials spec is the single source of truth for default model names, Ollama endpoint configuration, and API key storage.
 
-Default provider configurations:
+The AI processing pipeline SHALL use the configured values as follows:
+- The active model name for each provider is read from the `ai` preferences section
+- API keys are retrieved from the OS keychain (service `fotos`)
+- Ollama URL and model are read from the `ai` preferences section
 
-| Provider | Default Model | Additional Config |
-|---|---|---|
-| Claude | `claude-sonnet-4-20250514` | API key via OS keychain |
-| OpenAI | `gpt-4o` | API key via OS keychain |
-| Gemini | `gemini-2.0-flash` | API key via OS keychain |
-| Ollama | `llava:7b` | URL: `http://localhost:11434` |
+#### Scenario: Provider configuration applied
+- **WHEN** the user invokes LLM vision analysis
+- **THEN** the system SHALL read the provider's model name and (if applicable) API key from the settings-credentials store
+- **THEN** the system SHALL use those values for the API request
 
-#### Scenario: Configure Claude model
-- **WHEN** the user sets the Claude model in settings
-- **THEN** the system SHALL use the specified model for all subsequent Claude API calls
+#### Scenario: Settings change takes effect immediately
+- **WHEN** the user changes an LLM provider setting and then invokes analysis
+- **THEN** the new setting value SHALL be used for the request without requiring an app restart
 
-#### Scenario: Configure OpenAI model
-- **WHEN** the user sets the OpenAI model in settings
-- **THEN** the system SHALL use the specified model for all subsequent OpenAI API calls
+---
 
-#### Scenario: Configure Gemini model
-- **WHEN** the user sets the Gemini model in settings
-- **THEN** the system SHALL use the specified model for all subsequent Gemini API calls
+### Requirement: LLM API Error Handling
 
-#### Scenario: Configure Ollama URL and model
-- **WHEN** the user sets the Ollama URL and model in settings
-- **THEN** the system SHALL use the specified URL and model for all subsequent Ollama API calls
+The system SHALL handle all LLM API errors gracefully and return structured error information to the caller. Error categories MUST include: authentication failure (invalid or expired API key), rate limiting (429 status), network error (timeout, DNS, connection refused), provider error (500-level responses), and invalid response (malformed or empty body). The system SHALL NOT crash or hang on any API error.
 
-#### Scenario: Default Ollama configuration
-- **WHEN** the user has not configured Ollama settings
-- **THEN** the system SHALL default to URL `http://localhost:11434` and model `llava:7b`
+#### Scenario: Authentication failure
+- **WHEN** the system sends a request to a cloud LLM provider and receives a 401 or 403 response
+- **THEN** the system SHALL return an error with category `auth_error` and a message indicating the API key is invalid or expired
 
-#### Scenario: API key storage
-- **WHEN** the user provides an API key for Claude, OpenAI, or Gemini
-- **THEN** the system SHALL store the key in the OS keychain under service `fotos`
-- **THEN** the system SHALL NOT write the key to any configuration file or localStorage
+#### Scenario: Rate limit exceeded
+- **WHEN** the system sends a request to a cloud LLM provider and receives a 429 response
+- **THEN** the system SHALL return an error with category `rate_limited` and include the `Retry-After` header value if present
+
+#### Scenario: Network error
+- **WHEN** the system cannot connect to the LLM provider (DNS failure, connection refused, TLS error)
+- **THEN** the system SHALL return an error with category `network_error` and a descriptive message within the timeout period
+
+#### Scenario: Provider returns server error
+- **WHEN** the LLM provider returns a 500-level response
+- **THEN** the system SHALL return an error with category `provider_error` and include the HTTP status code
+
+---
+
+### Requirement: LLM Request Timeout and Cancellation
+
+The system SHALL enforce a configurable timeout on all LLM API requests. The default timeout SHALL be 60 seconds. If the timeout elapses before a response is received, the system SHALL abort the request and return a timeout error. The system SHALL support cancellation of in-progress LLM requests via a `cancel_llm_request` command.
+
+#### Scenario: Request times out
+- **WHEN** an LLM API request does not receive a response within the configured timeout period
+- **THEN** the system SHALL abort the HTTP request and return an error with category `timeout`
+
+#### Scenario: User cancels in-progress request
+- **WHEN** the user invokes `cancel_llm_request` while an LLM request is in flight
+- **THEN** the system SHALL abort the HTTP request and return a cancellation acknowledgment
+
+#### Scenario: Default timeout value
+- **WHEN** no custom timeout is configured
+- **THEN** the system SHALL use a 60-second timeout for LLM API requests
+
+---
+
+### Requirement: Image Size Limits for LLM Vision
+
+The system SHALL validate image dimensions and file size before sending to LLM vision APIs. If the image exceeds a provider's limits, the system SHALL automatically resize the image to fit within the limits while preserving the aspect ratio. The system SHALL NOT send images larger than the provider's maximum payload.
+
+Provider limits:
+
+| Provider | Max Image Dimension | Max Payload Size |
+|----------|-------------------|-----------------|
+| Claude | 8192px (longest edge) | 20 MB |
+| OpenAI | 2048px (longest edge) | 20 MB |
+| Gemini | 3072px (longest edge) | 20 MB |
+| Ollama | Model-dependent | No hard limit |
+
+#### Scenario: Image exceeds provider dimension limit
+- **WHEN** a screenshot is 10000x5000 pixels and the provider is Claude (max 8192px)
+- **THEN** the system SHALL resize the image to 8192x4096 pixels (preserving aspect ratio) before sending
+
+#### Scenario: Image within provider limits
+- **WHEN** a screenshot is 1920x1080 pixels and the provider is any supported provider
+- **THEN** the system SHALL send the image at its original dimensions without resizing
+
+#### Scenario: Ollama uses passthrough
+- **WHEN** the provider is Ollama
+- **THEN** the system SHALL send the image without resizing, as Ollama models handle their own image scaling

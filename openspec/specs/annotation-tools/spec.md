@@ -88,13 +88,13 @@ The resulting annotation object SHALL have `type: "text"` and store the text con
 
 ### Requirement: Blur Tool
 
-The system SHALL provide a blur annotation tool, activated by the keyboard shortcut **B**, that applies a pixelate/blur effect to a rectangular region of the image.
+The system SHALL provide a blur annotation tool, activated by the keyboard shortcut **B**, that applies a pixelation effect (block-averaging) to a rectangular region of the image. The effect SHALL divide the region into blocks and replace each block with its average color, producing a mosaic appearance.
 
-The user clicks to set one corner and drags to the opposite corner of the region to blur. The resulting annotation object SHALL have `type: "blur"` with `x`, `y`, `width`, and `height` defining the region in image coordinates, and a `blurRadius` property controlling the intensity of the effect. The `blurRadius` SHALL default to the value from settings (`annotation.blurRadius`, default 10) and MUST be configurable.
+The user clicks to set one corner and drags to the opposite corner of the region to blur. The resulting annotation object SHALL have `type: "blur"` with `x`, `y`, `width`, and `height` defining the region in image coordinates, and a `blurRadius` property controlling the pixelation block size in image pixels. The `blurRadius` SHALL default to the value from settings (`annotation.blurRadius`, default 10) and MUST be configurable.
 
 #### Scenario: Blur a rectangular region
 - **WHEN** the Blur tool is active and the user drags to select a region from (300, 100) to (500, 200) and releases
-- **THEN** an annotation with `type: "blur"`, `x: 300`, `y: 100`, `width: 200`, `height: 100`, and `blurRadius: 10` (default) SHALL be added, and the canvas SHALL render that region with a pixelate/blur effect
+- **THEN** an annotation with `type: "blur"`, `x: 300`, `y: 100`, `width: 200`, `height: 100`, and `blurRadius: 10` (default) SHALL be added, and the canvas SHALL render that region with a pixelation effect
 
 #### Scenario: Configurable blur radius
 - **WHEN** the user changes the blur radius setting to 20 and then uses the Blur tool
@@ -152,7 +152,7 @@ While the user holds the mouse button down, the system SHALL continuously sample
 
 The system SHALL provide a highlight annotation tool, activated by the keyboard shortcut **H**, that draws a semi-transparent colored overlay over a rectangular region.
 
-The user clicks to set one corner and drags to the opposite corner. The resulting annotation object SHALL have `type: "highlight"` with `x`, `y`, `width`, and `height` defining the region in image coordinates, and a `highlightColor` property (default `#FFFF00`). The highlight MUST always be rendered as semi-transparent regardless of the opacity setting -- the visual effect SHALL resemble a highlighter pen on paper.
+The user clicks to set one corner and drags to the opposite corner. The resulting annotation object SHALL have `type: "highlight"` with `x`, `y`, `width`, and `height` defining the region in image coordinates, and a `highlightColor` property (default `#FFFF00`). The highlight MUST always be rendered at `0.4` opacity regardless of the annotation's `opacity` setting -- the visual effect SHALL resemble a highlighter pen on paper.
 
 #### Scenario: Highlight a region
 - **WHEN** the Highlight tool is active and the user drags from (50, 300) to (400, 340)
@@ -160,7 +160,7 @@ The user clicks to set one corner and drags to the opposite corner. The resultin
 
 #### Scenario: Highlight is always semi-transparent
 - **WHEN** a highlight annotation is rendered
-- **THEN** the overlay MUST be semi-transparent so that the underlying image content remains visible through the highlight
+- **THEN** the overlay MUST be rendered at `0.4` opacity so that the underlying image content remains visible through the highlight, regardless of the annotation's `opacity` property
 
 #### Scenario: Keyboard shortcut activation
 - **WHEN** the user presses the **H** key and no text input is focused
@@ -174,7 +174,9 @@ The system SHALL provide a crop tool, activated by the keyboard shortcut **C**, 
 
 The user clicks to set one corner of the crop region and drags to the opposite corner. While dragging, the system SHALL display a crop overlay indicating the selected region and dimming the area outside it. On confirmation (e.g., pressing Enter or double-clicking), the image SHALL be cropped to the selected region. The crop operation affects the base image and all existing annotations -- annotations fully outside the crop region SHALL be removed, and coordinates of remaining annotations SHALL be adjusted relative to the new image origin.
 
-The resulting annotation object SHALL have `type: "crop"` with `x`, `y`, `width`, and `height` defining the crop region in image coordinates.
+The crop operation SHALL be recorded as a single compound command in the undo/redo history. The command SHALL store: the original image dimensions, the crop rectangle, the full pre-crop annotations array, and the removed annotations. Undoing a crop SHALL restore the original image, reinstate all removed annotations, and reverse the coordinate adjustments on remaining annotations.
+
+The resulting annotation object SHALL have `type: "crop"` with `x`, `y`, `width`, and `height` defining the crop region in image coordinates. Unlike other annotation types, a crop annotation is NOT added to the annotations array -- it is consumed by the crop operation and recorded only in the undo history.
 
 #### Scenario: Crop the image to a selected region
 - **WHEN** the Crop tool is active and the user selects a region from (100, 100) to (500, 400) and confirms the crop
@@ -194,16 +196,18 @@ The resulting annotation object SHALL have `type: "crop"` with `x`, `y`, `width`
 
 Every annotation object SHALL be a plain, serializable JavaScript object (no class instances, no methods) suitable for JSON serialization, storage, transmission to the Rust backend, and use by the MCP server.
 
+Each annotation tool type SHALL register itself with a renderer function that the canvas engine dispatches to when drawing annotations. The rendering dispatch SHALL use the annotation's `type` field to select the appropriate renderer. This registry-based design allows adding new annotation types without modifying the core rendering loop.
+
 Each annotation object MUST contain the following common fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string (UUID) | Unique identifier |
-| `type` | string enum | One of: `arrow`, `rect`, `ellipse`, `text`, `blur`, `step`, `freehand`, `highlight`, `crop` |
+| `id` | string (UUID v4) | Unique identifier, generated by the frontend via `crypto.randomUUID()` at annotation creation time |
+| `type` | string enum | One of: `arrow`, `rect`, `ellipse`, `text`, `blur`, `step`, `freehand`, `highlight` |
 | `x` | number | Top-left x in image coordinates |
 | `y` | number | Top-left y in image coordinates |
-| `width` | number | Bounding box width (for `rect`, `ellipse`, `blur`, `highlight`, `crop`) |
-| `height` | number | Bounding box height (for `rect`, `ellipse`, `blur`, `highlight`, `crop`) |
+| `width` | number | Bounding box width (for `rect`, `ellipse`, `blur`, `highlight`) |
+| `height` | number | Bounding box height (for `rect`, `ellipse`, `blur`, `highlight`) |
 | `points` | array of `{x, y}` | Geometry points (for `arrow`: 2 points; for `freehand`: N points) |
 | `strokeColor` | string | Stroke/outline color (CSS color) |
 | `fillColor` | string | Fill color (CSS color or `"transparent"`) |
@@ -225,6 +229,18 @@ In addition, the following type-specific fields MUST be present when applicable:
 
 All geometry values (x, y, width, height, points) MUST be in image coordinates, not screen coordinates. The canvas engine is responsible for applying the current zoom/pan transform when rendering.
 
+> **Note**: The `crop` tool operation (defined above) does NOT produce a persisted annotation in this data model. Crop geometry is recorded only in the undo/redo history. The `type` enum therefore does not include `crop`.
+
+#### Scenario: UUID generation
+- **WHEN** the frontend creates a new annotation object
+- **THEN** it MUST assign a UUID v4 string to the `id` field using `crypto.randomUUID()` (or equivalent)
+- **THEN** the `id` MUST be unique across all annotations in the current session
+
+#### Scenario: Deserialization validation
+- **WHEN** the Rust backend or MCP server receives an annotation array via IPC or JSON-RPC
+- **THEN** it MUST validate that each annotation has a non-empty `id`, a recognized `type`, and numeric geometry values
+- **THEN** annotations failing validation MUST be rejected with a descriptive error (not silently dropped)
+
 #### Scenario: Serialize and deserialize an annotation
 - **WHEN** an annotation object is passed to `JSON.stringify()` and the result is passed to `JSON.parse()`
 - **THEN** the resulting object MUST be identical in structure and values to the original (no data loss, no class methods required)
@@ -236,3 +252,53 @@ All geometry values (x, y, width, height, points) MUST be in image coordinates, 
 #### Scenario: Coordinates are in image space
 - **WHEN** the user draws an annotation on a zoomed or panned canvas
 - **THEN** the stored `x`, `y`, `width`, `height`, and `points` values MUST be in the original image coordinate system, independent of the current zoom level or pan offset
+
+---
+
+### Requirement: Annotation Lock and Unlock
+
+The system SHALL allow the user to lock an annotation, preventing it from being moved, resized, or deleted. The `locked` field on the annotation object controls this behavior. Locking SHALL be toggled via right-click context menu ("Lock" / "Unlock") on a selected annotation.
+
+#### Scenario: Lock a selected annotation
+- **WHEN** the user right-clicks a selected annotation and chooses "Lock"
+- **THEN** the annotation's `locked` field SHALL be set to `true`
+- **THEN** the selection handles SHALL change to indicate the locked state (e.g., dashed handles or a lock icon)
+
+#### Scenario: Locked annotation cannot be moved or resized
+- **WHEN** the user attempts to drag or resize a locked annotation
+- **THEN** the move or resize operation SHALL be ignored and the annotation SHALL remain in place
+
+#### Scenario: Locked annotation cannot be deleted via Delete key
+- **WHEN** the user selects a locked annotation and presses `Delete`
+- **THEN** the annotation SHALL NOT be removed from the annotations array
+
+#### Scenario: Unlock a locked annotation
+- **WHEN** the user right-clicks a locked annotation and chooses "Unlock"
+- **THEN** the annotation's `locked` field SHALL be set to `false`
+- **THEN** normal move, resize, and delete operations SHALL be re-enabled
+
+---
+
+### Requirement: Annotation Z-Ordering
+
+Annotations SHALL be rendered in the order they appear in the annotations array (index 0 is bottommost, last index is topmost). The system SHALL provide z-ordering operations accessible via right-click context menu on a selected annotation:
+
+- **Bring to Front** -- move to last position in the array
+- **Send to Back** -- move to first position in the array
+- **Bring Forward** -- move one position toward the end
+- **Send Backward** -- move one position toward the start
+
+Z-order changes SHALL be recorded as commands in the undo/redo history.
+
+#### Scenario: Bring annotation to front
+- **WHEN** the user right-clicks a selected annotation and chooses "Bring to Front"
+- **THEN** the annotation SHALL be moved to the last position in the annotations array
+- **THEN** the annotation layer SHALL be re-rendered with the new ordering
+
+#### Scenario: Send annotation to back
+- **WHEN** the user right-clicks a selected annotation and chooses "Send to Back"
+- **THEN** the annotation SHALL be moved to the first position in the annotations array
+
+#### Scenario: Z-order change is undoable
+- **WHEN** the user changes an annotation's z-order and then presses `Ctrl+Z`
+- **THEN** the annotation SHALL return to its previous position in the array

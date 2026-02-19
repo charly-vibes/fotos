@@ -10,7 +10,13 @@ This capability covers the Rust Tauri commands `save_image`, `copy_to_clipboard`
 
 ### Requirement: Save Image
 
-The system SHALL composite the base screenshot image with all committed annotations and save the result to the specified file path. The `save_image` Tauri command MUST accept an `image_id` (String), an `annotations` array (`Vec<Annotation>`), a `format` string, and a `path` string. The command MUST support the formats `png`, `jpg`, and `webp`. The compositing MUST render annotations at the original image dimensions (no viewport transform applied). On success the command SHALL return the absolute path of the written file as a String.
+The Rust backend SHALL be the **single compositing authority** for rendering annotations onto screenshots. All compositing — whether for saving, clipboard copy, export, or MCP tool calls — MUST use the same backend rendering codepath. The frontend SHALL NOT independently composite images.
+
+The backend SHALL expose a `composite_image` Tauri command that accepts an `image_id` (String), an `annotations` array (`Vec<Annotation>`), and a `format` string, and returns the composited image as bytes. The `save_image` command SHALL use this same compositing internally.
+
+The `save_image` Tauri command MUST accept an `image_id` (String), an `annotations` array (`Vec<Annotation>`), a `format` string, and a `path` string. The command MUST support the formats `png`, `jpg`, and `webp`. The compositing MUST render annotations at the original image dimensions (no viewport transform applied). On success the command SHALL return the absolute path of the written file as a String.
+
+> **Design rationale**: A single compositing codepath guarantees that saved files, clipboard images, and exported images are pixel-identical to each other. The frontend canvas rendering (triple-layer) is optimized for interactive preview only; the backend compositing is the source of truth for output.
 
 #### Scenario: Save as PNG
 - **WHEN** the frontend invokes `save_image` with `format: "png"` and a valid `path`
@@ -34,11 +40,17 @@ The system SHALL composite the base screenshot image with all committed annotati
 - **WHEN** the frontend invokes `save_image` with a `path` whose parent directory does not exist or is not writable
 - **THEN** the command SHALL return an error string describing the file system failure
 
+#### Scenario: Overwrite existing file
+- **WHEN** the frontend invokes `save_image` with a `path` that already exists on disk
+- **THEN** the frontend SHALL prompt the user for confirmation before overwriting
+- **THEN** if the user confirms, the file SHALL be overwritten with the new image
+- **THEN** if the user declines, the save SHALL be cancelled
+
 ---
 
 ### Requirement: Save As
 
-The system SHALL allow the user to choose a destination file path via a native save dialog before saving. The frontend MUST use the Tauri dialog plugin (`tauri-plugin-dialog`) to present a file-picker dialog that filters by supported image formats (PNG, JPG, WebP). When the user confirms a path, the frontend SHALL invoke `save_image` with the chosen path and the format inferred from the file extension. If the user cancels the dialog, no save operation SHALL occur.
+The system SHALL allow the user to choose a destination file path and format via the export dialog. Triggering Save As (`Ctrl+Shift+S` or toolbar button) SHALL open the export dialog (defined in the ui-shell spec), which presents options for saving to file, copying to clipboard, and exporting annotation JSON. When the user selects "Save to File" in the export dialog, the system SHALL use the Tauri dialog plugin (`tauri-plugin-dialog`) to present a native file-picker dialog that filters by supported image formats (PNG, JPG, WebP). When the user confirms a path, the frontend SHALL invoke `save_image` with the chosen path and the format inferred from the file extension. If the user cancels at any point, no save operation SHALL occur.
 
 #### Scenario: User picks destination and saves
 - **WHEN** the user triggers Save As (Ctrl+Shift+S or toolbar button)
@@ -123,7 +135,7 @@ The system SHALL provide a configurable default save directory for screenshot fi
 #### Scenario: First save uses default directory
 - **WHEN** the user triggers Save (Ctrl+S) for a newly captured screenshot that has not been saved before
 - **THEN** the system SHALL save the file to the configured default save directory
-- **THEN** the filename SHALL be auto-generated using the capture timestamp (e.g., `fotos-2025-01-15-143022.png`)
+- **THEN** the filename SHALL be auto-generated using the pattern `fotos-YYYY-MM-DD-HHmmss.<ext>` where `YYYY-MM-DD-HHmmss` is the capture timestamp in local time and `<ext>` matches the configured default format (e.g., `fotos-2025-01-15-143022.png`)
 - **THEN** the file format SHALL match the `capture.defaultFormat` setting (default `png`)
 
 #### Scenario: Default directory does not exist
@@ -152,3 +164,42 @@ The system SHALL optionally copy the captured screenshot to the system clipboard
 #### Scenario: Auto-copy does not block annotation
 - **WHEN** auto-copy is enabled and the clipboard write is in progress
 - **THEN** the frontend SHALL NOT be blocked from displaying the image and enabling annotation tools
+
+---
+
+### Requirement: Single Active Image
+
+The application SHALL support exactly one active screenshot at a time. Loading or capturing a new screenshot SHALL replace the current image and clear all annotations and undo history. If the current image has unsaved changes (annotations added since last save), the system SHALL prompt the user to save or discard before replacing.
+
+#### Scenario: New capture replaces current image
+- **WHEN** the user captures a new screenshot while an annotated screenshot is displayed
+- **THEN** the system SHALL prompt the user to save or discard unsaved changes
+- **THEN** upon confirmation, the new screenshot SHALL replace the current image, annotations SHALL be cleared, and the undo history SHALL be reset
+
+#### Scenario: Load replaces current image
+- **WHEN** the user loads an image file while a screenshot is displayed with unsaved annotations
+- **THEN** the system SHALL prompt the user to save or discard before loading the new image
+
+#### Scenario: No unsaved changes skips prompt
+- **WHEN** the user captures a new screenshot and the current image has no unsaved changes
+- **THEN** the new screenshot SHALL replace the current image without prompting
+
+---
+
+### Requirement: Import Annotations
+
+The system SHALL allow the user to import a previously exported annotation JSON file and apply the annotations to the current screenshot. The frontend SHALL use the Tauri dialog plugin to present a file-open dialog filtering for `.json` files. The imported annotations MUST conform to the annotation data model. On successful import, the imported annotations SHALL be added to the current annotations array and a compound add command SHALL be pushed onto the undo stack.
+
+#### Scenario: Import valid annotation JSON
+- **WHEN** the user selects a valid annotation JSON file via the import dialog
+- **THEN** the annotations from the file SHALL be deserialized and added to the current annotations array
+- **THEN** the annotation layer SHALL be re-rendered with the imported annotations
+- **THEN** a compound command SHALL be pushed onto the undo stack so the import can be undone
+
+#### Scenario: Import invalid JSON
+- **WHEN** the user selects a file that is not valid JSON or does not conform to the annotation data model
+- **THEN** the system SHALL display an error message and the current annotations SHALL remain unchanged
+
+#### Scenario: Import with no screenshot loaded
+- **WHEN** the user attempts to import annotations and no screenshot is currently loaded
+- **THEN** the system SHALL display an error indicating that a screenshot must be loaded first

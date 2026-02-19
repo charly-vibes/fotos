@@ -29,8 +29,12 @@ The system SHALL detect the current platform and compositor at runtime by inspec
 - **THEN** the platform MUST resolve to `LinuxWaylandOther`
 
 #### Scenario: X11 session detected
-- **WHEN** `XDG_SESSION_TYPE` is `x11` or `WAYLAND_DISPLAY` is unset on Linux
+- **WHEN** `XDG_SESSION_TYPE` is `x11` on Linux
 - **THEN** the platform MUST resolve to `LinuxX11`
+
+#### Scenario: Fallback to X11 when session type unknown
+- **WHEN** `XDG_SESSION_TYPE` is unset and `WAYLAND_DISPLAY` is unset on Linux
+- **THEN** the platform MUST resolve to `LinuxX11` as a fallback
 
 #### Scenario: Windows detected
 - **WHEN** the operating system is Windows
@@ -56,7 +60,9 @@ The system SHALL select the appropriate capture backend based on the detected pl
 
 ### Requirement: xcap Backend for X11 and Windows
 
-The system SHALL use the `xcap` crate (version 0.8+) to perform screenshot capture on X11 and Windows platforms. The xcap backend MUST support fullscreen, monitor, region, and window capture modes.
+The system SHALL use the `xcap` crate to perform screenshot capture on X11 and Windows platforms. The xcap backend MUST support fullscreen, monitor, region, and window capture modes.
+
+> **Implementation note**: Tested against xcap 0.8+. Future versions should work provided the `Monitor` and `Window` APIs remain compatible.
 
 #### Scenario: xcap captures fullscreen on X11
 - **WHEN** the platform is `LinuxX11` and a fullscreen capture is requested
@@ -68,7 +74,9 @@ The system SHALL use the `xcap` crate (version 0.8+) to perform screenshot captu
 
 ### Requirement: xdg-desktop-portal Backend for Wayland
 
-The system SHALL use the `ashpd` crate (version 0.11+) to perform screenshot capture on Wayland platforms via the xdg-desktop-portal Screenshot interface. The portal backend MUST communicate over D-Bus using `zbus`.
+The system SHALL use the `ashpd` crate to perform screenshot capture on Wayland platforms via the xdg-desktop-portal Screenshot interface. The portal backend MUST communicate over D-Bus using `zbus`.
+
+> **Implementation note**: Tested against ashpd 0.11+. Future versions should work provided the `Screenshot` API remains compatible.
 
 #### Scenario: Portal backend invokes ashpd on Wayland
 - **WHEN** a capture is requested on a Wayland platform
@@ -77,6 +85,10 @@ The system SHALL use the `ashpd` crate (version 0.11+) to perform screenshot cap
 #### Scenario: Portal backend falls back gracefully when portal is unavailable
 - **WHEN** the xdg-desktop-portal service is not running or does not support the Screenshot interface
 - **THEN** the system MUST return a descriptive error indicating that the portal is unavailable
+
+#### Scenario: Portal returns non-file URI
+- **WHEN** the xdg-desktop-portal returns a URI with a scheme other than `file://` (e.g., `fd://`)
+- **THEN** the system MUST handle the URI appropriately or return a descriptive error indicating the unsupported URI scheme
 
 ### Requirement: CaptureBackend Trait
 
@@ -243,6 +255,36 @@ For region capture on X11 and Windows, the frontend MUST display a transparent f
 #### Scenario: User cancels region selection
 - **WHEN** the user presses Escape during region selection on the overlay
 - **THEN** the overlay MUST close and the capture MUST be cancelled without producing a result
+
+---
+
+### Requirement: Capture Delay Feedback
+
+When a capture delay (`delayMs > 0`) is configured, the system SHALL provide visual feedback to the user during the delay period. The frontend SHALL display a countdown overlay showing the remaining seconds before capture. The overlay MUST be dismissed automatically when the countdown reaches zero and capture begins.
+
+#### Scenario: Countdown overlay during delay
+- **WHEN** a capture is initiated with `delayMs` set to `3000`
+- **THEN** a countdown overlay SHALL appear showing "3", "2", "1" at one-second intervals
+- **THEN** the overlay SHALL dismiss when the countdown reaches zero and the capture proceeds
+
+#### Scenario: No overlay with zero delay
+- **WHEN** a capture is initiated with `delayMs` set to `0`
+- **THEN** no countdown overlay SHALL appear and the capture SHALL begin immediately
+
+---
+
+### Requirement: Window Enumeration on Wayland
+
+On Wayland platforms, window enumeration (`list_windows()`) is restricted by the compositor's security model. The system SHALL attempt to enumerate windows via xdg-desktop-portal or compositor-specific extensions (e.g., `org.kde.KWin`). If window enumeration is not supported, the system MUST return an empty list and the `Window` capture mode SHALL fall back to interactive portal selection.
+
+#### Scenario: Wayland window enumeration supported
+- **WHEN** `list_windows()` is called on a Wayland platform that supports window enumeration (e.g., KDE with KWin)
+- **THEN** the result MUST contain metadata for visible windows
+
+#### Scenario: Wayland window enumeration not supported
+- **WHEN** `list_windows()` is called on a Wayland platform that does not support window enumeration (e.g., GNOME)
+- **THEN** the result MUST be an empty list
+- **THEN** the `Window` capture mode SHALL invoke the portal with `interactive(true)` and let the user select the target window through the compositor's native UI
 
 ### Requirement: X11/Windows Screenshot Event Emission
 

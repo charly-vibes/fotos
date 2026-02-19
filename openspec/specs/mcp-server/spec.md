@@ -55,6 +55,60 @@ The `fotos-mcp` binary SHALL communicate with the main Tauri application via a l
 - **WHEN** `fotos-mcp` receives an MCP tool call and the main Tauri app is running on Windows
 - **THEN** `fotos-mcp` SHALL connect to the named pipe, send the command, receive the result, and return it to the MCP host
 
+### Requirement: IPC Wire Format
+
+The IPC channel between `fotos-mcp` and the main Tauri application SHALL use a length-prefixed JSON message protocol. Each message SHALL be framed as a 4-byte big-endian unsigned integer (the payload length in bytes) followed by that many bytes of UTF-8 JSON.
+
+Each request message SHALL be a JSON object containing:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string (UUID) | Unique request identifier for correlation |
+| `command` | string | The Tauri command name to invoke (e.g., `take_screenshot`, `run_ocr`, `save_image`) |
+| `params` | object | Command-specific parameters, matching the Tauri command's argument signature |
+
+Each response message SHALL be a JSON object containing:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string (UUID) | The request `id` this response correlates to |
+| `ok` | any (optional) | Present on success; contains the command return value |
+| `error` | object (optional) | Present on failure; contains `code` (string) and `message` (string) |
+
+Exactly one of `ok` or `error` MUST be present in each response. The `code` field in error responses SHALL use the same error categories defined in the relevant capability specs (e.g., `auth_error`, `timeout`, `network_error` from the ai-processing spec).
+
+#### Scenario: Successful round-trip
+- **WHEN** `fotos-mcp` sends a request with `id: "abc-123"` and `command: "take_screenshot"`
+- **THEN** the main app SHALL respond with a message containing `id: "abc-123"` and an `ok` field with the capture result
+
+#### Scenario: Error round-trip
+- **WHEN** `fotos-mcp` sends a request and the command fails
+- **THEN** the main app SHALL respond with the same `id` and an `error` field containing `code` and `message`
+
+#### Scenario: Malformed request handling
+- **WHEN** the main app receives a message that is not valid JSON or is missing required fields
+- **THEN** the main app SHALL respond with `error.code` set to `invalid_request` and a descriptive message
+
+---
+
+### Requirement: IPC Socket Path
+
+The IPC Unix domain socket path on Linux SHALL be `$XDG_RUNTIME_DIR/fotos-ipc.sock`. If `XDG_RUNTIME_DIR` is not set, the system SHALL fall back to `/tmp/fotos-ipc.sock`. On Windows, the named pipe SHALL be `\\.\pipe\fotos-ipc`. The main Tauri application SHALL create and listen on this path at startup, and remove it on clean shutdown.
+
+#### Scenario: Socket created on app startup
+- **WHEN** the main Tauri application starts
+- **THEN** it SHALL create the IPC socket at the expected path and begin accepting connections
+
+#### Scenario: Socket cleaned up on shutdown
+- **WHEN** the main Tauri application exits cleanly
+- **THEN** it SHALL remove the Unix domain socket file (on Linux)
+
+#### Scenario: Stale socket detected
+- **WHEN** `fotos-mcp` connects to an existing socket but receives no response within 2 seconds
+- **THEN** it SHALL treat the socket as stale, close the connection, and fall back to standalone mode if available
+
+---
+
 ### Requirement: Stateless Delegation
 
 The `fotos-mcp` process SHALL be stateless. All screenshot storage, AI processing, and file operations MUST be delegated to the main Tauri application via the IPC bridge. The MCP server SHALL NOT maintain its own screenshot store or AI processing pipeline when operating in bridged mode.
@@ -75,7 +129,7 @@ When the main Tauri application is not running and `fotos-mcp` is not in standal
 
 ### Requirement: Screenshot Capture Tool
 
-The MCP server SHALL expose a `take_screenshot` tool that captures a screenshot of the desktop, a specific monitor, or a specific window. The tool SHALL accept the following optional parameters:
+The MCP server SHALL expose a `take_screenshot` tool that captures a screenshot of the desktop, a specific monitor, or a specific window. The capture behavior (platform detection, backend selection, capture modes) is defined in the **screenshot-capture** spec; this requirement defines only the MCP tool interface. The tool SHALL accept the following optional parameters:
 - `mode` (string, enum: `fullscreen`, `monitor`, `window`, default: `fullscreen`) -- the capture mode
 - `monitor_index` (integer) -- the monitor index, used when mode is `monitor`
 - `window_title` (string) -- a substring to match against window titles, used when mode is `window`
@@ -105,7 +159,7 @@ The MCP server SHALL expose a `take_screenshot` tool that captures a screenshot 
 
 ### Requirement: OCR Text Extraction Tool
 
-The MCP server SHALL expose an `ocr_screenshot` tool that extracts text from a screenshot using OCR. The tool SHALL accept the following parameters:
+The MCP server SHALL expose an `ocr_screenshot` tool that extracts text from a screenshot using OCR. The OCR behavior (Tesseract engine, language support, result format) is defined in the **ai-processing** spec; this requirement defines only the MCP tool interface. The tool SHALL accept the following parameters:
 - `screenshot_id` (string, optional) -- ID of a previously captured screenshot; if omitted, a new fullscreen capture SHALL be taken first
 - `language` (string, default: `eng`) -- the OCR language code (e.g., `eng`, `deu`, `jpn`)
 
@@ -131,20 +185,20 @@ The tool SHALL return a text content block containing the extracted text and str
 
 ### Requirement: Annotation Tool
 
-The MCP server SHALL expose an `annotate_screenshot` tool that adds annotations to a screenshot. The tool SHALL accept the following parameters:
+The MCP server SHALL expose an `annotate_screenshot` tool that adds annotations to a screenshot. The annotation data model (types, fields, geometry conventions) is defined in the **annotation-tools** spec; this requirement defines only the MCP tool interface. The tool SHALL accept the following parameters:
 - `screenshot_id` (string, required) -- ID of the screenshot to annotate
-- `annotations` (array, required) -- an array of annotation objects, each containing:
-  - `type` (string, required, enum: `arrow`, `rect`, `ellipse`, `text`, `blur`) -- the annotation type
-  - `x` (number) -- x-coordinate of the annotation origin
-  - `y` (number) -- y-coordinate of the annotation origin
+- `annotations` (array, required) -- an array of annotation objects conforming to the annotation data model defined in the **annotation-tools** spec. Each object MUST include at minimum:
+  - `type` (string, required) -- the annotation type (see annotation-tools spec for valid types)
+  - `x` (number) -- x-coordinate of the annotation origin in image coordinates
+  - `y` (number) -- y-coordinate of the annotation origin in image coordinates
   - `width` (number) -- width of the annotation bounding box
   - `height` (number) -- height of the annotation bounding box
-  - `points` (array of objects) -- control points for arrow and freehand types
-  - `text` (string) -- text content for text annotations
-  - `color` (string, default: `#FF0000`) -- stroke/fill color
-  - `stroke_width` (number, default: 2) -- stroke width in pixels
+  - `points` (array of `{x, y}`) -- control points for `arrow` and `freehand` types
+  - `text` (string) -- text content for `text` and `step` annotations
+  - `strokeColor` (string, default: `#FF0000`) -- stroke color (CSS color)
+  - `strokeWidth` (number, default: 2) -- stroke width in image pixels
 
-The tool SHALL return the annotated image as a base64 PNG image content block.
+The tool SHALL return the annotated image as a base64 PNG image content block. Compositing is performed by the backend compositing authority (see **file-operations** spec).
 
 #### Scenario: Add rectangle annotation
 - **WHEN** `annotate_screenshot` is called with a rectangle annotation at coordinates (100, 100) with width 200 and height 150
@@ -162,9 +216,9 @@ The tool SHALL return the annotated image as a base64 PNG image content block.
 
 ### Requirement: LLM Vision Analysis Tool
 
-The MCP server SHALL expose an `analyze_screenshot` tool that sends a screenshot to an LLM vision model for analysis. The tool SHALL accept the following parameters:
+The MCP server SHALL expose an `analyze_screenshot` tool that sends a screenshot to an LLM vision model for analysis. The LLM provider behavior (model configuration, error handling, timeouts, image size limits) is defined in the **ai-processing** spec; this requirement defines only the MCP tool interface. The tool SHALL accept the following parameters:
 - `screenshot_id` (string, optional) -- ID of a previously captured screenshot; if omitted, a new fullscreen capture SHALL be taken first
-- `prompt` (string, default: `"Describe what you see in this screenshot"`) -- the analysis prompt sent to the LLM
+- `prompt` (string, default: `"Describe what you see in this screenshot in detail."`) -- the analysis prompt sent to the LLM
 - `provider` (string, enum: `claude`, `openai`, `gemini`, `ollama`, default: `claude`) -- the LLM provider to use
 
 The tool SHALL return the LLM's text response along with metadata (model name, token usage).
@@ -189,7 +243,7 @@ The tool SHALL return the LLM's text response along with metadata (model name, t
 
 ### Requirement: PII Auto-Redaction Tool
 
-The MCP server SHALL expose an `auto_redact_pii` tool that detects and blurs personally identifiable information in a screenshot. The tool SHALL accept the following parameter:
+The MCP server SHALL expose an `auto_redact_pii` tool that detects and blurs personally identifiable information in a screenshot. The PII detection pipeline (OCR, pattern matching, blur application) is defined in the **ai-processing** spec; this requirement defines only the MCP tool interface. The tool SHALL accept the following parameter:
 - `screenshot_id` (string, required) -- ID of the screenshot to redact
 
 The tool SHALL run OCR, apply PII pattern matching (email, phone, SSN, credit card, API keys, IP addresses), blur the detected regions, and return both the redacted image (base64 PNG) and a list of detected PII types with their locations.
@@ -332,3 +386,32 @@ When operating in standalone mode, `fotos-mcp` SHALL NOT provide annotation pers
 #### Scenario: Settings resource in standalone mode
 - **WHEN** an MCP host reads `settings://current` while `fotos-mcp` is in standalone mode
 - **THEN** the server SHALL return default settings values since the main app settings store is unavailable
+
+---
+
+### Requirement: Standalone Screenshot Storage
+
+When operating in standalone mode, `fotos-mcp` SHALL store captured screenshots in an in-memory `HashMap<Uuid, CaptureResult>` with a maximum capacity of 50 entries. When the capacity is exceeded, the oldest screenshot (by capture timestamp) SHALL be evicted. Screenshots SHALL NOT be written to disk in standalone mode. All stored screenshots SHALL be released when the `fotos-mcp` process exits.
+
+#### Scenario: Storage limit reached in standalone mode
+- **WHEN** 50 screenshots are stored in standalone mode and a new capture is performed
+- **THEN** the oldest screenshot by timestamp SHALL be evicted from memory
+- **THEN** the new screenshot SHALL be stored and its ID returned
+
+#### Scenario: Process exit releases memory
+- **WHEN** the `fotos-mcp` process is terminated (stdin EOF, SIGTERM, or host exit)
+- **THEN** all in-memory screenshot data SHALL be released (no disk cleanup required)
+
+---
+
+### Requirement: Concurrent Request Handling
+
+The `fotos-mcp` binary SHALL process MCP requests sequentially on a single async task. Concurrent requests from the MCP host SHALL be queued and processed in FIFO order. Long-running operations (capture, OCR, LLM analysis) SHALL NOT block the JSON-RPC message parser; the parser SHALL continue reading stdin and queue incoming requests while a tool call is in progress.
+
+#### Scenario: Concurrent tool calls queued
+- **WHEN** the MCP host sends a second tool call request while a first tool call is still in progress
+- **THEN** the second request SHALL be queued and processed after the first completes
+
+#### Scenario: Stdin remains responsive during long operations
+- **WHEN** an LLM analysis tool call is in progress (potentially 30+ seconds)
+- **THEN** the `fotos-mcp` process SHALL continue reading and buffering JSON-RPC messages from stdin

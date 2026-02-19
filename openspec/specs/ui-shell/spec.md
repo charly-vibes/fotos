@@ -158,7 +158,7 @@ The AI panel SHALL contain a `#llm-results` section that displays responses from
 
 #### Scenario: Processing indicator
 - **WHEN** an AI operation (OCR or LLM) is in progress
-- **THEN** the AI panel MUST display a processing/loading indicator
+- **THEN** the AI panel MUST display a spinner icon with the text "Processing..." in the relevant results section (`#ocr-results` or `#llm-results`)
 
 ---
 
@@ -208,13 +208,15 @@ The `#status-message` span SHALL display transient status messages (e.g., "Saved
 
 #### Scenario: Status message clears after timeout
 - **WHEN** a status message is displayed
-- **THEN** it MUST automatically clear after a reasonable timeout (e.g., 3-5 seconds)
+- **THEN** it MUST automatically clear after 4 seconds
 
 ---
 
 ### Requirement: Annotation Tool Shortcuts
 
-The app SHALL support single-key shortcuts for switching annotation tools. These shortcuts MUST NOT fire when a text input or textarea is focused.
+The app SHALL support single-key shortcuts for switching annotation tools. The canonical key assignment for each tool is defined in the **annotation-tools** spec (each tool requirement specifies its activation shortcut). The ui-shell is responsible for the keyboard event listener and dispatch; the annotation-tools spec is the source of truth for which key maps to which tool.
+
+The following table summarizes the current mappings (see annotation-tools spec for authoritative definitions):
 
 | Key | Tool |
 |-----|------|
@@ -228,6 +230,8 @@ The app SHALL support single-key shortcuts for switching annotation tools. These
 | `F` | Freehand |
 | `H` | Highlight |
 | `C` | Crop |
+
+These shortcuts MUST NOT fire when a text input or textarea is focused.
 
 #### Scenario: Pressing a tool shortcut key activates the tool
 - **WHEN** the user presses `R` while no text input is focused
@@ -428,73 +432,20 @@ The app SHALL provide a settings modal (`settings.js`) accessible from the UI th
 - **WHEN** the user clicks a close button or presses Escape in the settings modal
 - **THEN** the modal MUST close and return focus to the main workspace
 
-### Requirement: Capture Settings
+### Requirement: Settings Modal Content
 
-The settings modal SHALL expose capture preferences including:
+The settings modal SHALL expose all user preferences defined in the **settings-credentials** spec, organized into the same four sections: Capture, Annotation, AI, and UI. The settings-credentials spec is the single source of truth for key names, types, and default values; this spec defines only the UI presentation.
 
-- Default capture mode (`"region"`, `"fullscreen"`, `"window"`)
-- Include mouse cursor (boolean, default `false`)
-- Capture delay in milliseconds (default `0`)
-- Save directory (default `~/Pictures/Fotos`)
-- Default image format (`"png"`, `"jpg"`, `"webp"`)
-- JPEG quality (1-100, default `90`)
-- Copy to clipboard after capture (boolean, default `true`)
+Each preference key defined in settings-credentials SHALL have a corresponding form control in the appropriate settings section. API key entry fields SHALL invoke the `set_api_key` Tauri command to persist keys to the OS keychain. API keys MUST NOT be stored in config files, localStorage, or any frontend-accessible storage.
 
-#### Scenario: Changing default capture mode
+#### Scenario: Changing a capture setting
 - **WHEN** the user changes the default capture mode to `"fullscreen"` and saves settings
 - **THEN** the persisted `capture.defaultMode` setting MUST be `"fullscreen"`
-
-#### Scenario: Changing save directory
-- **WHEN** the user sets the save directory to a new path and saves settings
-- **THEN** subsequent save operations MUST default to the new directory
-
-### Requirement: Annotation Settings
-
-The settings modal SHALL expose annotation preferences including:
-
-- Default stroke color (default `#FF0000`)
-- Default stroke width (default `2`)
-- Default font size (default `16`)
-- Default font family (default `sans-serif`)
-- Step number color (default `#FF0000`)
-- Step number size (default `24`)
-- Blur radius (default `10`)
-
-#### Scenario: Changing default stroke color
-- **WHEN** the user changes the default stroke color to `#00FF00` and saves settings
-- **THEN** new annotations MUST use `#00FF00` as the initial stroke color
-
-### Requirement: AI Settings
-
-The settings modal SHALL expose AI preferences including:
-
-- OCR language (default `"eng"`)
-- Default LLM provider (`"claude"`, `"openai"`, `"gemini"`, `"ollama"`, default `"claude"`)
-- Ollama URL (default `http://localhost:11434`)
-- Ollama model (default `llava:7b`)
-- Claude model name
-- OpenAI model name
-- Gemini model name
-- API key entry fields for each cloud provider
-
-API keys MUST be stored in the OS keychain via the Rust backend. The settings modal SHALL call the `set_api_key` Tauri command to persist keys securely. API keys MUST NOT be stored in config files, localStorage, or any frontend-accessible storage.
 
 #### Scenario: Setting an API key
 - **WHEN** the user enters an Anthropic API key and saves settings
 - **THEN** the key MUST be persisted to the OS keychain via the `set_api_key` Tauri command
 - **THEN** the key MUST NOT be written to any config file or localStorage
-
-#### Scenario: Changing the LLM provider
-- **WHEN** the user changes the default LLM provider to `"ollama"` and saves
-- **THEN** subsequent AI analysis operations MUST use the Ollama provider by default
-
-### Requirement: UI Settings
-
-The settings modal SHALL expose UI preferences including:
-
-- Theme (`"system"`, `"light"`, `"dark"`, default `"system"`)
-- Show AI panel (boolean, default `true`)
-- Show status bar (boolean, default `true`)
 
 #### Scenario: Hiding the status bar
 - **WHEN** the user sets "Show status bar" to false and saves
@@ -519,8 +470,10 @@ All settings MUST be persisted via the Tauri `tauri-plugin-store` backend (`set_
 The app SHALL provide an export dialog (`export-dialog.js`) that presents save, copy, and upload options for the annotated screenshot.
 
 #### Scenario: Opening the export dialog
-- **WHEN** the user triggers the save-as action (Ctrl+Shift+S or toolbar button)
-- **THEN** an export dialog MUST appear with output options
+- **WHEN** the user triggers the save-as action (`Ctrl+Shift+S` or the save-as toolbar button)
+- **THEN** a custom export dialog MUST appear with three output options: Save to File, Copy to Clipboard, and Export Annotations as JSON
+
+> **Note**: The export dialog is distinct from the quick-save flow (`Ctrl+S`), which saves directly to the default directory without opening a dialog. The "Save to File" option within the export dialog uses the native file-picker dialog via `tauri-plugin-dialog` for path selection.
 
 ### Requirement: Save to File
 
@@ -553,3 +506,65 @@ The export dialog SHALL include an option to export annotations as a JSON file f
 - **WHEN** the user selects the export-annotations option
 - **THEN** the current annotation array MUST be serialized to JSON
 - **THEN** the user MUST be prompted to choose a save location for the JSON file
+
+---
+
+### Requirement: Error Notification System
+
+The app SHALL display user-facing error notifications as toast messages in a `#toast-container` element positioned at the bottom-right of the viewport. Each toast SHALL have a severity level (`error`, `warning`, `info`) indicated by color (red, yellow, blue respectively). Toasts SHALL auto-dismiss after 6 seconds. The user SHALL be able to dismiss a toast early by clicking a close button on it. A maximum of 3 toasts SHALL be visible simultaneously; additional toasts SHALL queue and appear as earlier ones dismiss.
+
+#### Scenario: Display error toast
+- **WHEN** an operation fails (e.g., save failure, API error, clipboard error)
+- **THEN** a toast with severity `error` SHALL appear in `#toast-container` with a descriptive message
+- **THEN** the toast SHALL have a red accent color and a close button
+
+#### Scenario: Toast auto-dismiss
+- **WHEN** a toast is displayed
+- **THEN** it SHALL automatically fade out and be removed after 6 seconds
+
+#### Scenario: Toast queue when at capacity
+- **WHEN** 3 toasts are visible and a new error occurs
+- **THEN** the new toast SHALL be queued and displayed when one of the visible toasts is dismissed
+
+#### Scenario: Manual dismiss
+- **WHEN** the user clicks the close button on a toast
+- **THEN** the toast SHALL be immediately removed and any queued toast SHALL appear
+
+---
+
+### Requirement: Settings Modal Trigger
+
+The settings modal SHALL be accessible via a gear icon button (`data-action="open-settings"`) in the toolbar's output tools group, and via the keyboard shortcut `Ctrl+,` (comma). The gear button SHALL be placed after the Save As button in the output tools group.
+
+#### Scenario: Open settings via toolbar button
+- **WHEN** the user clicks the gear icon button in the toolbar
+- **THEN** the settings modal MUST appear overlaying the main workspace
+
+#### Scenario: Open settings via keyboard shortcut
+- **WHEN** the user presses `Ctrl+,`
+- **THEN** the settings modal MUST appear overlaying the main workspace
+
+---
+
+### Requirement: Basic Accessibility
+
+The app SHALL meet baseline accessibility requirements for keyboard and screen reader users:
+
+- All toolbar buttons MUST have `aria-label` attributes describing their function (e.g., `aria-label="Arrow tool (A)"`)
+- Active tool buttons MUST have `aria-pressed="true"`
+- The settings modal MUST trap focus while open (Tab cycles within the modal)
+- The settings modal MUST have `role="dialog"` and `aria-modal="true"`
+- All interactive elements MUST be reachable via Tab key navigation
+- Focus order MUST follow the visual layout (left-to-right, top-to-bottom)
+
+#### Scenario: Toolbar buttons have accessible labels
+- **WHEN** a screen reader user navigates to a toolbar button
+- **THEN** the screen reader MUST announce the tool name and keyboard shortcut from the `aria-label`
+
+#### Scenario: Modal traps focus
+- **WHEN** the settings modal is open and the user presses Tab
+- **THEN** focus MUST cycle through the modal's interactive elements without escaping to the main page
+
+#### Scenario: Keyboard-only tool switching
+- **WHEN** a keyboard-only user presses Tab to navigate the toolbar and presses Enter on a tool button
+- **THEN** the corresponding tool MUST become active

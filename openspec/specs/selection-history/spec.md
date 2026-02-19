@@ -31,6 +31,19 @@ The application SHALL provide a Selection tool that allows the user to select an
 - **THEN** the annotation SHALL be deselected
 - **THEN** selection handles SHALL be removed
 
+#### Scenario: Add to selection via Ctrl+click
+- **WHEN** the Selection tool is active and one annotation is selected and the user Ctrl+clicks on a different annotation
+- **THEN** the second annotation SHALL be added to the selection (both are now selected)
+- **THEN** selection handles SHALL be rendered around the combined bounding box of all selected annotations
+
+#### Scenario: Toggle selection via Ctrl+click
+- **WHEN** the Selection tool is active and multiple annotations are selected and the user Ctrl+clicks on one of the selected annotations
+- **THEN** that annotation SHALL be removed from the selection while the remaining annotations stay selected
+
+#### Scenario: Range select via Shift+click
+- **WHEN** the Selection tool is active and one annotation is selected and the user Shift+clicks on another annotation
+- **THEN** both annotations and all annotations between them (by z-order) SHALL become selected
+
 #### Scenario: Deselect via Escape key
 - **WHEN** an annotation is selected and the user presses the `Escape` key
 - **THEN** the selection SHALL be cleared
@@ -68,6 +81,11 @@ The application SHALL render resize handles on the bounding box of a selected an
 - **WHEN** an annotation is selected and the user clicks on an edge resize handle and drags
 - **THEN** the annotation SHALL resize along the axis of that edge
 - **THEN** on mouse release, a resize command SHALL be pushed onto the undo stack
+
+#### Scenario: Resize with multiple annotations selected
+- **WHEN** multiple annotations are selected and the user drags a corner resize handle on the combined bounding box
+- **THEN** all selected annotations SHALL be resized proportionally relative to the combined bounding box
+- **THEN** a single compound resize command SHALL be pushed onto the undo stack
 
 ---
 
@@ -159,3 +177,22 @@ The undo history SHALL be limited to a maximum of 100 commands. When the undo st
 #### Scenario: History within limit
 - **WHEN** the undo stack contains fewer than 100 commands and a new command is executed
 - **THEN** the new command SHALL be appended to the undo stack without evicting any existing commands
+
+---
+
+### Requirement: Step Number Counter and Undo
+
+The step number auto-increment counter (`nextStepNumber`) SHALL be managed independently from the undo/redo history. Undoing a step-number annotation addition SHALL remove the annotation from the canvas but SHALL NOT decrement the counter. Redoing the addition SHALL restore the annotation with its original step number. The counter SHALL reset to 1 only when a new screenshot is loaded or captured (replacing the current image).
+
+#### Scenario: Undo step number does not decrement counter
+- **WHEN** the user places step numbers 1, 2, and 3, then undoes the last action
+- **THEN** step number 3 SHALL be removed from the canvas
+- **THEN** the next step number placed SHALL be 4 (the counter is NOT decremented to 3)
+
+#### Scenario: Counter resets on new screenshot
+- **WHEN** a new screenshot is captured or loaded, replacing the current image
+- **THEN** the `nextStepNumber` counter SHALL reset to 1
+
+#### Scenario: Counter persists across tool switches
+- **WHEN** the user places step number 1, switches to the Arrow tool, then switches back to the Step Number tool
+- **THEN** the next step number SHALL be 2

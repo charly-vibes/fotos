@@ -209,3 +209,58 @@ API keys MUST NOT be stored in configuration files, the `tauri-plugin-store` pre
 #### Scenario: API keys not logged
 - **WHEN** the application logs debug or error messages
 - **THEN** API key values MUST NOT appear in log output
+
+---
+
+### Requirement: Settings Schema Versioning
+
+The preference store SHALL include a `_schemaVersion` integer key at the top level. The current schema version SHALL be `1`. On startup, the application SHALL compare the stored `_schemaVersion` against the expected version. If they differ, the application SHALL run a migration function that upgrades the stored data to the current schema. Unknown keys SHALL be preserved during migration. If `_schemaVersion` is absent (e.g., legacy or first-run), it SHALL be treated as version `0` and migrated.
+
+#### Scenario: Schema version matches
+- **WHEN** the stored `_schemaVersion` matches the application's expected version
+- **THEN** the application SHALL load settings normally without migration
+
+#### Scenario: Schema version outdated
+- **WHEN** the stored `_schemaVersion` is lower than the expected version
+- **THEN** the application SHALL run the appropriate migration functions in sequence (v0→v1, v1→v2, etc.)
+- **THEN** the `_schemaVersion` SHALL be updated to the current version after migration
+
+#### Scenario: First launch with no schema version
+- **WHEN** the store file exists but has no `_schemaVersion` key
+- **THEN** the application SHALL treat it as version `0` and run all migrations
+
+---
+
+### Requirement: Reset Preferences to Defaults
+
+The application SHALL provide a "Reset to Defaults" action in the settings UI that restores all preferences to their documented default values. API keys in the OS keychain SHALL NOT be affected by a settings reset. The reset SHALL be confirmed by the user before taking effect.
+
+#### Scenario: Reset all preferences
+- **WHEN** the user clicks "Reset to Defaults" in the settings modal and confirms the action
+- **THEN** all preference keys SHALL be restored to their documented defaults
+- **THEN** the `_schemaVersion` key SHALL remain at the current version
+- **THEN** API keys in the OS keychain SHALL NOT be deleted
+
+#### Scenario: User cancels reset
+- **WHEN** the user clicks "Reset to Defaults" and declines the confirmation prompt
+- **THEN** all settings SHALL remain unchanged
+
+---
+
+### Requirement: Keychain Error Handling
+
+The application SHALL handle OS keychain errors gracefully. If the keychain is unavailable (locked, missing, permission denied), the application SHALL display a user-facing error explaining that API keys cannot be accessed and suggest remediation (e.g., unlocking the keychain, checking permissions). The application MUST NOT crash on keychain errors and MUST remain functional for features that do not require API keys (capture, annotation, local OCR, Ollama).
+
+#### Scenario: Keychain locked
+- **WHEN** the application attempts to retrieve an API key and the OS keychain is locked
+- **THEN** the application SHALL display an error indicating the keychain is locked and prompt the user to unlock it
+- **THEN** capture, annotation, and Ollama features SHALL remain available
+
+#### Scenario: Keychain service unavailable
+- **WHEN** the OS keychain service is not running (e.g., missing `gnome-keyring-daemon`)
+- **THEN** the application SHALL display an error at startup indicating that the keychain is unavailable
+- **THEN** the user SHALL be able to use all non-API-key features without further errors
+
+#### Scenario: Permission denied on keychain access
+- **WHEN** the application is denied access to the keychain by the OS (e.g., Flatpak sandbox restriction)
+- **THEN** the application SHALL display a descriptive error and suggest granting the necessary permission
