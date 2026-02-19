@@ -1,0 +1,43 @@
+app-id: io.github.charly.fotos
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: fotos
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --share=ipc
+  - --share=network
+  - --filesystem=xdg-pictures:create
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.Screenshot
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  - name: tesseract
+    buildsystem: cmake-ninja
+    sources:
+      - type: archive
+        url: https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz
+        sha256: '' # TODO: fill in hash
+
+  - name: tessdata-eng
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 eng.traineddata /app/share/tessdata/eng.traineddata
+    sources:
+      - type: file
+        url: https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata
+        sha256: '' # TODO: fill in hash
+
+  - name: fotos
+    buildsystem: simple
+    build-commands:
+      - cargo build --release
+      - install -Dm755 target/release/fotos /app/bin/fotos
+      - install -Dm755 target/release/fotos-mcp /app/bin/fotos-mcp

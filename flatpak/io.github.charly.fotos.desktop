@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Fotos
+Comment=AI-powered screenshot capture, annotation, and analysis
+Exec=fotos
+Icon=io.github.charly.fotos
+Terminal=false
+Type=Application
+Categories=Graphics;Utility;
+Keywords=screenshot;capture;annotation;ocr;
+StartupNotify=true
+MimeType=image/png;image/jpeg;image/webp;

@@ -1,0 +1,16 @@
+{
+  "name": "Fotos",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tauri-apps.tauri-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "cargo fetch",
+  "remoteUser": "root"
+}

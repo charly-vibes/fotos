@@ -1,0 +1,28 @@
+[package]
+name = "fotos-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "MCP server for Fotos — AI-powered screenshot tool"
+
+[[bin]]
+name = "fotos-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# MCP protocol
+rmcp = { version = "0.1", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# IPC to main app
+interprocess = "2"
+
+# Image handling
+base64 = "0.22"
+image = "0.25"
+
+# Utilities
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"

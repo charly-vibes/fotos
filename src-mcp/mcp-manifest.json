@@ -1,0 +1,8 @@
+{
+  "name": "fotos",
+  "version": "0.1.0",
+  "description": "AI-powered screenshot capture, annotation, and analysis",
+  "command": "fotos-mcp",
+  "args": [],
+  "env": {}
+}
