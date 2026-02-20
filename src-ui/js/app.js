@@ -35,6 +35,16 @@ async function init() {
       try {
         const result = await takeScreenshot('fullscreen');
         console.log('Screenshot captured:', result.id);
+
+        // Load image into canvas
+        const { width, height } = await engine.loadImage(result.data_url);
+
+        // Update state
+        store.set('currentImageId', result.id);
+
+        // Update status bar
+        document.getElementById('status-dimensions').textContent = `${width}×${height}`;
+        document.getElementById('status-message').textContent = 'Ready';
       } catch (error) {
         console.error('Screenshot failed:', error);
         document.getElementById('status-message').textContent = `Capture failed: ${error}`;
@@ -42,12 +52,9 @@ async function init() {
     }
   });
 
-  // Listen for screenshot-ready events
+  // Listen for screenshot-ready events (for future use)
   await listen('screenshot-ready', (event) => {
-    console.log('Screenshot ready:', event.payload);
-    const { id, width, height } = event.payload;
-    document.getElementById('status-message').textContent = `Screenshot captured: ${width}x${height}`;
-    // TODO: Load image into canvas (fotos-jub will implement this)
+    console.log('Screenshot ready event:', event.payload);
   });
 
   // TODO: initialize settings from backend

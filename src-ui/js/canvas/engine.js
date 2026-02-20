@@ -5,6 +5,9 @@
 /// Layer 2 (canvas-active):      Active tool preview — redrawn on every mouse move
 
 export class CanvasEngine {
+  #baseCanvas;
+  #annoCanvas;
+  #activeCanvas;
   #baseCtx;
   #annoCtx;
   #activeCtx;
@@ -14,15 +17,39 @@ export class CanvasEngine {
   #panY = 0;
 
   constructor(baseCanvas, annoCanvas, activeCanvas) {
+    this.#baseCanvas = baseCanvas;
+    this.#annoCanvas = annoCanvas;
+    this.#activeCanvas = activeCanvas;
     this.#baseCtx = baseCanvas.getContext('2d');
     this.#annoCtx = annoCanvas.getContext('2d');
     this.#activeCtx = activeCanvas.getContext('2d');
 
-    // TODO: size canvases, attach resize observer
+    // TODO: attach resize observer for dynamic sizing
   }
 
-  loadImage(imageData) {
-    // TODO: create ImageBitmap from ArrayBuffer, store, trigger redraw
+  async loadImage(dataUrl) {
+    // Convert base64 data URL to Blob
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Create ImageBitmap for efficient rendering
+    this.#image = await createImageBitmap(blob);
+
+    // Size all canvas layers to match image dimensions
+    const width = this.#image.width;
+    const height = this.#image.height;
+
+    this.#baseCanvas.width = width;
+    this.#baseCanvas.height = height;
+    this.#annoCanvas.width = width;
+    this.#annoCanvas.height = height;
+    this.#activeCanvas.width = width;
+    this.#activeCanvas.height = height;
+
+    // Render the base layer
+    this.renderBase();
+
+    return { width, height };
   }
 
   screenToImage(screenX, screenY) {
@@ -34,7 +61,13 @@ export class CanvasEngine {
   }
 
   renderBase() {
-    // TODO: clear, apply transform, drawImage
+    if (!this.#image) return;
+
+    // Clear canvas
+    this.#baseCtx.clearRect(0, 0, this.#baseCanvas.width, this.#baseCanvas.height);
+
+    // Draw image at 1:1 scale (no zoom/pan for tracer-bullet)
+    this.#baseCtx.drawImage(this.#image, 0, 0);
   }
 
   renderAnnotations(annotations) {
