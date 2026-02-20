@@ -1,14 +1,13 @@
-use tracing_subscriber;
-
 mod bridge;
 mod server;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
-
-    // TODO: start MCP server on stdio transport
-    tracing::info!("fotos-mcp starting");
+    // Print version to stderr and exit cleanly (tracer-bullet stub)
+    eprintln!("fotos-mcp v{}", VERSION);
+    eprintln!("MCP server stub - protocol implementation deferred");
 
     Ok(())
 }
