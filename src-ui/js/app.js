@@ -3,6 +3,8 @@
 
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
+import { History, DeleteCommand } from './canvas/history.js';
+import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
 import { ping, takeScreenshot, runOcr } from './tauri-bridge.js';
@@ -40,6 +42,8 @@ async function init() {
   const activeCanvas = document.getElementById('canvas-active');
 
   const engine = new CanvasEngine(baseCanvas, annoCanvas, activeCanvas);
+  const history = new History();
+  const selectionManager = new SelectionManager();
 
   initToolbar(store);
   initAiPanel(store);
@@ -132,6 +136,45 @@ async function init() {
         setStatusMessage(`Capture failed: ${error}`, false);
       }
     }
+
+    // Delete key - delete selected annotation
+    if (e.key === 'Delete') {
+      const selected = selectionManager.selected;
+      if (!selected) return;
+
+      const annotations = store.get('annotations');
+      const index = annotations.findIndex(a => a.id === selected.id);
+      if (index === -1) return;
+
+      // Create and execute delete command
+      const deleteCmd = new DeleteCommand(selected, index);
+      const newAnnotations = history.execute(deleteCmd, annotations);
+
+      // Update state and deselect
+      store.set('annotations', newAnnotations);
+      selectionManager.deselect();
+      engine.renderAnnotations(newAnnotations, null);
+      setStatusMessage('Annotation deleted');
+    }
+
+    // Ctrl+Z - undo
+    if (e.ctrlKey && e.key === 'z') {
+      e.preventDefault();
+
+      if (!history.canUndo) {
+        setStatusMessage('Nothing to undo', false);
+        return;
+      }
+
+      const annotations = store.get('annotations');
+      const newAnnotations = history.undo(annotations);
+
+      // Update state and deselect
+      store.set('annotations', newAnnotations);
+      selectionManager.deselect();
+      engine.renderAnnotations(newAnnotations, null);
+      setStatusMessage('Undone');
+    }
   });
 
   // Listen for screenshot-ready events (for future use)
@@ -144,13 +187,31 @@ async function init() {
   let startX, startY;
 
   activeCanvas.addEventListener('mousedown', (e) => {
-    if (store.get('activeTool') !== 'rect') return;
     if (!store.get('currentImageId')) return;
 
-    isDrawing = true;
     const rect = activeCanvas.getBoundingClientRect();
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Rectangle drawing mode
+    if (store.get('activeTool') === 'rect') {
+      isDrawing = true;
+      startX = clickX;
+      startY = clickY;
+      return;
+    }
+
+    // Selection mode - hit test for annotations
+    const hitResult = selectionManager.hitTest(clickX, clickY, store.get('annotations'));
+    if (hitResult) {
+      selectionManager.select(hitResult.annotation);
+      // Re-render with selection indicator
+      engine.renderAnnotations(store.get('annotations'), hitResult.annotation);
+    } else {
+      selectionManager.deselect();
+      // Re-render without selection indicator
+      engine.renderAnnotations(store.get('annotations'), null);
+    }
   });
 
   activeCanvas.addEventListener('mousemove', (e) => {
@@ -217,7 +278,7 @@ async function init() {
 
   // Re-render annotations when they change
   store.on('annotations', (annotations) => {
-    engine.renderAnnotations(annotations);
+    engine.renderAnnotations(annotations, selectionManager.selected);
   });
 
   // Make engine available for rectangle tool

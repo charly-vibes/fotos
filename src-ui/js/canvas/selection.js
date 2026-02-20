@@ -1,5 +1,7 @@
 /// Selection tool — select, move, resize, and delete annotations.
 
+import { pointInRect } from '../utils/geometry.js';
+
 export class SelectionManager {
   #selected = null;
 
@@ -16,7 +18,18 @@ export class SelectionManager {
   }
 
   hitTest(x, y, annotations) {
-    // TODO: iterate annotations in reverse order, check bounding box
+    // Iterate in reverse order (last drawn = top-most)
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const anno = annotations[i];
+
+      // Currently only support rect hit testing
+      if (anno.type === 'rect') {
+        if (pointInRect(x, y, anno)) {
+          return { annotation: anno, index: i };
+        }
+      }
+    }
+
     return null;
   }
 }

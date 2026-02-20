@@ -31,3 +31,29 @@ export class History {
   get canUndo() { return this.#undoStack.length > 0; }
   get canRedo() { return this.#redoStack.length > 0; }
 }
+
+/// Command: delete an annotation.
+/// Delta stores the deleted annotation and its index.
+export class DeleteCommand {
+  #deletedAnnotation;
+  #deletedIndex;
+
+  constructor(annotation, index) {
+    this.#deletedAnnotation = annotation;
+    this.#deletedIndex = index;
+  }
+
+  execute(annotations) {
+    // Remove annotation from array
+    const newAnnotations = [...annotations];
+    newAnnotations.splice(this.#deletedIndex, 1);
+    return newAnnotations;
+  }
+
+  undo(annotations) {
+    // Restore annotation at original index
+    const newAnnotations = [...annotations];
+    newAnnotations.splice(this.#deletedIndex, 0, this.#deletedAnnotation);
+    return newAnnotations;
+  }
+}

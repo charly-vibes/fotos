@@ -70,7 +70,7 @@ export class CanvasEngine {
     this.#baseCtx.drawImage(this.#image, 0, 0);
   }
 
-  renderAnnotations(annotations) {
+  renderAnnotations(annotations, selectedAnnotation = null) {
     if (!annotations) return;
 
     // Clear annotations canvas
@@ -79,6 +79,11 @@ export class CanvasEngine {
     // Draw each annotation
     for (const anno of annotations) {
       this.#drawShape(this.#annoCtx, anno);
+    }
+
+    // Draw selection indicator if annotation is selected
+    if (selectedAnnotation) {
+      this.#drawSelectionIndicator(this.#annoCtx, selectedAnnotation);
     }
   }
 
@@ -102,6 +107,29 @@ export class CanvasEngine {
       ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
     }
     // TODO: add other shape types (ellipse, arrow, etc.) when implemented
+  }
+
+  #drawSelectionIndicator(ctx, shape) {
+    if (!shape) return;
+
+    // Draw dashed border around selected annotation
+    ctx.save();
+    ctx.strokeStyle = '#0066FF';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+
+    if (shape.type === 'rect') {
+      // Draw selection border with 4px padding
+      const padding = 4;
+      ctx.strokeRect(
+        shape.x - padding,
+        shape.y - padding,
+        shape.width + padding * 2,
+        shape.height + padding * 2
+      );
+    }
+
+    ctx.restore();
   }
 
   exportComposite(annotations, format = 'png') {

@@ -1,0 +1,6 @@
+plugins = []
+
+[project]
+name = "fotos"
+version = "2026.2.0"
+description = ""
