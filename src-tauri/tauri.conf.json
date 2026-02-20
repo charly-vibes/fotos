@@ -24,10 +24,7 @@
       "tooltip": "Fotos"
     },
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'",
-      "dangerousDisableAssetCspModification": {
-        "script": ["'unsafe-eval'"]
-      }
+      "csp": "default-src 'self'; img-src 'self' data: blob:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
     },
     "withGlobalTauri": true
   },
