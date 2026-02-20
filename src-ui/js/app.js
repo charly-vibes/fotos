@@ -115,8 +115,8 @@ async function init() {
 
   // Wire keyboard shortcuts
   document.addEventListener('keydown', async (e) => {
-    // PrintScreen key for fullscreen capture
-    if (e.key === 'PrintScreen') {
+    // Ctrl+Shift+A for fullscreen capture (alternative to PrintScreen)
+    if (e.ctrlKey && e.shiftKey && e.key === 'A') {
       e.preventDefault();
       try {
         const result = await takeScreenshot('fullscreen');
