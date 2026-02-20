@@ -9,6 +9,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Fotos",
         "width": 1200,
         "height": 800,
@@ -24,8 +25,7 @@
       "tooltip": "Fotos"
     },
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'",
-      "capabilities": ["default"]
+      "csp": "default-src 'self'; img-src 'self' data: blob:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
     },
     "withGlobalTauri": true
   },
