@@ -26,7 +26,7 @@ pub struct Annotation {
 }
 
 #[tauri::command]
-pub async fn save_image(
+pub fn save_image(
     image_id: String,
     annotations: Vec<Annotation>,
     _format: String,
@@ -75,18 +75,18 @@ pub async fn save_image(
 }
 
 #[tauri::command]
-pub async fn copy_to_clipboard(
-    image_id: String,
-    annotations: Vec<Annotation>,
+pub fn copy_to_clipboard(
+    _image_id: String,
+    _annotations: Vec<Annotation>,
 ) -> Result<(), String> {
     // TODO: composite and copy to clipboard
     Err("Not yet implemented".into())
 }
 
 #[tauri::command]
-pub async fn export_annotations(
-    image_id: String,
-    annotations: Vec<Annotation>,
+pub fn export_annotations(
+    _image_id: String,
+    _annotations: Vec<Annotation>,
 ) -> Result<String, String> {
     // TODO: export annotations as JSON
     Err("Not yet implemented".into())

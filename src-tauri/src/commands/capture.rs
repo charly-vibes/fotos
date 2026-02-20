@@ -87,13 +87,13 @@ pub async fn take_screenshot(
 }
 
 #[tauri::command]
-pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
+pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
     // TODO: enumerate monitors
     Err("Not yet implemented".into())
 }
 
 #[tauri::command]
-pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
+pub fn list_windows() -> Result<Vec<WindowInfo>, String> {
     // TODO: enumerate windows
     Err("Not yet implemented".into())
 }

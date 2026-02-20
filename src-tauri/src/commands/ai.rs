@@ -36,7 +36,7 @@ pub struct LlmResponse {
 }
 
 #[tauri::command]
-pub async fn run_ocr(
+pub fn run_ocr(
     image_id: String,
     lang: Option<String>,
     store: tauri::State<'_, ImageStore>,
@@ -86,16 +86,16 @@ pub async fn run_ocr(
 }
 
 #[tauri::command]
-pub async fn auto_blur_pii(image_id: String) -> Result<Vec<BlurRegion>, String> {
+pub fn auto_blur_pii(_image_id: String) -> Result<Vec<BlurRegion>, String> {
     // TODO: implement PII detection
     Err("Not yet implemented".into())
 }
 
 #[tauri::command]
-pub async fn analyze_llm(
-    image_id: String,
-    prompt: Option<String>,
-    provider: String,
+pub fn analyze_llm(
+    _image_id: String,
+    _prompt: Option<String>,
+    _provider: String,
 ) -> Result<LlmResponse, String> {
     // TODO: implement LLM vision analysis
     Err("Not yet implemented".into())

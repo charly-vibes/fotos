@@ -112,19 +112,19 @@ impl Default for Settings {
 }
 
 #[tauri::command]
-pub async fn get_settings() -> Result<Settings, String> {
+pub fn get_settings() -> Result<Settings, String> {
     // Tracer-bullet: return hardcoded defaults (no persistence)
     Ok(Settings::default())
 }
 
 #[tauri::command]
-pub async fn set_settings(_settings: Settings) -> Result<(), String> {
+pub fn set_settings(_settings: Settings) -> Result<(), String> {
     // Tracer-bullet: no-op (no persistence)
     Ok(())
 }
 
 #[tauri::command]
-pub async fn set_api_key(_provider: String, _key: String) -> Result<(), String> {
+pub fn set_api_key(_provider: String, _key: String) -> Result<(), String> {
     // Tracer-bullet: no-op (no keychain integration)
     Ok(())
 }
