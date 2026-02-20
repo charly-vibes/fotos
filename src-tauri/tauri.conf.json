@@ -27,11 +27,7 @@
       "csp": "default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'"
     }
   },
-  "plugins": {
-    "global-shortcut": {
-      "shortcuts": ["PrintScreen", "Alt+PrintScreen", "Ctrl+Shift+S"]
-    }
-  },
+  "plugins": {},
   "bundle": {
     "active": true,
     "targets": ["deb", "appimage", "msi", "nsis"],
