@@ -7,7 +7,7 @@ import { History, DeleteCommand } from './canvas/history.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { ping, takeScreenshot, runOcr } from './tauri-bridge.js';
+import { ping, takeScreenshot, runOcr, saveImage } from './tauri-bridge.js';
 
 const { listen } = window.__TAURI__.event;
 
@@ -174,6 +174,27 @@ async function init() {
       selectionManager.deselect();
       engine.renderAnnotations(newAnnotations, null);
       setStatusMessage('Undone');
+    }
+
+    // Ctrl+S - save image
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+
+      const currentImageId = store.get('currentImageId');
+      if (!currentImageId) {
+        setStatusMessage('No image to save', false);
+        return;
+      }
+
+      try {
+        setStatusMessage('Saving...', false);
+        const annotations = store.get('annotations');
+        // Empty path triggers default path generation
+        const savedPath = await saveImage(currentImageId, annotations, 'png', '');
+        setStatusMessage(`Saved to ${savedPath}`);
+      } catch (error) {
+        setStatusMessage(`Save failed: ${error}`, false);
+      }
     }
   });
 
