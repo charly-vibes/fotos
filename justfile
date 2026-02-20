@@ -94,6 +94,7 @@ setup-distrobox:
         libappindicator-gtk3-devel \
         dbus-devel \
         pipewire-devel \
+        mesa-libgbm-devel \
         clang-devel \
         openssl-devel \
         tesseract-devel \
