@@ -5,7 +5,10 @@ pub mod credentials;
 pub mod ipc;
 
 pub fn run() {
+    let image_store = capture::ImageStore::new();
+
     tauri::Builder::default()
+        .manage(image_store)
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

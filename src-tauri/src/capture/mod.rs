@@ -5,6 +5,8 @@ pub mod xcap_backend;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,4 +31,37 @@ pub struct CaptureResult {
     pub id: Uuid,
     pub image: image::DynamicImage,
     pub metadata: CaptureMetadata,
+}
+
+/// Global image store shared across the application.
+/// Used by capture, AI processing, and file operations.
+#[derive(Clone)]
+pub struct ImageStore {
+    images: Arc<RwLock<HashMap<Uuid, image::DynamicImage>>>,
+}
+
+impl ImageStore {
+    pub fn new() -> Self {
+        Self {
+            images: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub fn insert(&self, id: Uuid, image: image::DynamicImage) {
+        self.images.write().unwrap().insert(id, image);
+    }
+
+    pub fn get(&self, id: &Uuid) -> Option<image::DynamicImage> {
+        self.images.read().unwrap().get(id).cloned()
+    }
+
+    pub fn remove(&self, id: &Uuid) -> Option<image::DynamicImage> {
+        self.images.write().unwrap().remove(id)
+    }
+}
+
+impl Default for ImageStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }

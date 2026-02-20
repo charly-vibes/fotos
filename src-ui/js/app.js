@@ -4,7 +4,9 @@
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
 import { initToolbar } from './ui/toolbar.js';
-import { ping } from './tauri-bridge.js';
+import { ping, takeScreenshot } from './tauri-bridge.js';
+
+const { listen } = window.__TAURI__.event;
 
 async function init() {
   // Verify Tauri IPC connection
@@ -25,8 +27,29 @@ async function init() {
 
   initToolbar(store);
 
-  // TODO: wire keyboard shortcuts
-  // TODO: wire Tauri event listeners (screenshot-ready, etc.)
+  // Wire keyboard shortcuts
+  document.addEventListener('keydown', async (e) => {
+    // PrintScreen key for fullscreen capture
+    if (e.key === 'PrintScreen') {
+      e.preventDefault();
+      try {
+        const result = await takeScreenshot('fullscreen');
+        console.log('Screenshot captured:', result.id);
+      } catch (error) {
+        console.error('Screenshot failed:', error);
+        document.getElementById('status-message').textContent = `Capture failed: ${error}`;
+      }
+    }
+  });
+
+  // Listen for screenshot-ready events
+  await listen('screenshot-ready', (event) => {
+    console.log('Screenshot ready:', event.payload);
+    const { id, width, height } = event.payload;
+    document.getElementById('status-message').textContent = `Screenshot captured: ${width}x${height}`;
+    // TODO: Load image into canvas (fotos-jub will implement this)
+  });
+
   // TODO: initialize settings from backend
 
   console.log('Fotos initialized');

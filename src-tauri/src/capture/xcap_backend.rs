@@ -4,10 +4,42 @@
 /// without requiring a portal.
 
 use anyhow::Result;
+use image::{DynamicImage, ImageBuffer, Rgba};
+use xcap::Monitor;
 
-pub async fn capture_fullscreen() -> Result<image::DynamicImage> {
-    // TODO: use xcap Monitor::all() to capture
-    anyhow::bail!("xcap fullscreen capture not yet implemented")
+pub async fn capture_fullscreen() -> Result<DynamicImage> {
+    // Capture all monitors and composite into a single image
+    let monitors = Monitor::all()?;
+
+    if monitors.is_empty() {
+        anyhow::bail!("No monitors detected");
+    }
+
+    // For tracer-bullet: capture all monitors and place side-by-side
+    // Find total width and max height
+    let mut total_width: u32 = 0;
+    let mut max_height: u32 = 0;
+
+    for monitor in &monitors {
+        total_width += monitor.width()?;
+        let height = monitor.height()?;
+        if height > max_height {
+            max_height = height;
+        }
+    }
+
+    // Create composite image
+    let mut composite = ImageBuffer::from_pixel(total_width, max_height, Rgba([0, 0, 0, 255]));
+
+    let mut x_offset = 0u32;
+    for monitor in monitors {
+        let screenshot = monitor.capture_image()?;
+        // screenshot is already an ImageBuffer<Rgba<u8>, Vec<u8>>
+        image::imageops::overlay(&mut composite, &screenshot, x_offset as i64, 0);
+        x_offset += screenshot.width();
+    }
+
+    Ok(DynamicImage::ImageRgba8(composite))
 }
 
 pub async fn capture_monitor(index: u32) -> Result<image::DynamicImage> {
