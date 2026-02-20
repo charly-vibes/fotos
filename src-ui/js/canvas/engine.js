@@ -71,11 +71,37 @@ export class CanvasEngine {
   }
 
   renderAnnotations(annotations) {
-    // TODO: clear, apply transform, iterate annotations, draw each
+    if (!annotations) return;
+
+    // Clear annotations canvas
+    this.#annoCtx.clearRect(0, 0, this.#annoCanvas.width, this.#annoCanvas.height);
+
+    // Draw each annotation
+    for (const anno of annotations) {
+      this.#drawShape(this.#annoCtx, anno);
+    }
   }
 
   renderActive(previewShape) {
-    // TODO: clear, apply transform, draw single shape
+    // Clear active canvas
+    this.#activeCtx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
+
+    // Draw preview shape if provided
+    if (previewShape) {
+      this.#drawShape(this.#activeCtx, previewShape);
+    }
+  }
+
+  #drawShape(ctx, shape) {
+    if (!shape) return;
+
+    ctx.strokeStyle = shape.stroke_color || '#FF0000';
+    ctx.lineWidth = shape.stroke_width || 2;
+
+    if (shape.type === 'rect') {
+      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+    }
+    // TODO: add other shape types (ellipse, arrow, etc.) when implemented
   }
 
   exportComposite(annotations, format = 'png') {
