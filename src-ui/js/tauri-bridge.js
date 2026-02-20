@@ -3,6 +3,10 @@
 
 const { invoke } = window.__TAURI__.core;
 
+export async function ping() {
+  return invoke('ping');
+}
+
 export async function takeScreenshot(mode, monitor = null) {
   return invoke('take_screenshot', { mode, monitor });
 }

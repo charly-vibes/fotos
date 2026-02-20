@@ -4,8 +4,19 @@
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
 import { initToolbar } from './ui/toolbar.js';
+import { ping } from './tauri-bridge.js';
 
 async function init() {
+  // Verify Tauri IPC connection
+  try {
+    const response = await ping();
+    console.log('Backend ping:', response);
+    document.getElementById('status-message').textContent = 'Backend connected';
+  } catch (error) {
+    console.error('Backend ping failed:', error);
+    document.getElementById('status-message').textContent = 'Backend connection failed';
+  }
+
   const baseCanvas = document.getElementById('canvas-base');
   const annoCanvas = document.getElementById('canvas-annotations');
   const activeCanvas = document.getElementById('canvas-active');
