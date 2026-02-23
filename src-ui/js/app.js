@@ -69,6 +69,12 @@ function getAnnotationBBox(ann) {
 }
 
 async function init() {
+  // Wire custom titlebar controls
+  const appWindow = window.__TAURI__.window.getCurrentWindow();
+  document.getElementById('btn-minimize').onclick = () => appWindow.minimize();
+  document.getElementById('btn-maximize').onclick = () => appWindow.toggleMaximize();
+  document.getElementById('btn-close').onclick = () => appWindow.close();
+
   // Verify Tauri IPC connection
   try {
     const response = await ping();

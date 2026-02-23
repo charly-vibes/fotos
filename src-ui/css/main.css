@@ -6,13 +6,61 @@
 
 body {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   grid-template-columns: 1fr auto;
   height: 100vh;
   overflow: hidden;
   font-family: system-ui, -apple-system, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
+}
+
+/* Custom titlebar */
+#titlebar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 0 0 12px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#titlebar-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+#titlebar-controls {
+  display: flex;
+}
+
+#titlebar-controls button {
+  width: 46px;
+  height: 30px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+
+#titlebar-controls button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+#btn-close:hover {
+  background: #c42b1c !important;
+  color: #fff !important;
 }
 
 /* Toolbar */
@@ -69,6 +117,7 @@ body {
 /* Canvas container */
 #canvas-container {
   grid-column: 1;
+  grid-row: 3;
   position: relative;
   overflow: hidden;
   background: var(--bg-secondary);
@@ -100,7 +149,7 @@ body {
 /* AI Panel */
 #ai-panel {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   width: 300px;
   background: var(--bg-primary);
   border-left: 1px solid var(--border);

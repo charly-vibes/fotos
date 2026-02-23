@@ -9,6 +9,16 @@
   <link rel="stylesheet" href="css/themes.css">
 </head>
 <body>
+  <!-- Custom title bar -->
+  <div id="titlebar" data-tauri-drag-region>
+    <span id="titlebar-title">Fotos</span>
+    <div id="titlebar-controls">
+      <button id="btn-minimize" title="Minimize">&#8722;</button>
+      <button id="btn-maximize" title="Maximize">&#9633;</button>
+      <button id="btn-close" title="Close">&#10005;</button>
+    </div>
+  </div>
+
   <!-- Top toolbar -->
   <header id="toolbar">
     <div class="tool-group" id="capture-tools">
