@@ -2,6 +2,7 @@ use crate::capture::ImageStore;
 use base64::prelude::*;
 use serde::Serialize;
 use std::io::Cursor;
+use std::sync::Arc;
 use tauri::Emitter;
 use uuid::Uuid;
 
@@ -56,12 +57,13 @@ pub async fn take_screenshot(
         .await
         .map_err(|e| format!("Capture failed: {}", e))?;
 
+    let image = Arc::new(image);
     let width = image.width();
     let height = image.height();
 
-    // Generate UUID and store image
+    // Generate UUID and store image (Arc clone, no pixel copy)
     let id = Uuid::new_v4();
-    store.insert(id, image.clone());
+    store.insert(id, Arc::clone(&image));
 
     // Convert to base64 PNG data URL
     let mut png_data = Vec::new();

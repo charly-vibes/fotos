@@ -29,7 +29,7 @@ pub struct CaptureMetadata {
 #[derive(Debug)]
 pub struct CaptureResult {
     pub id: Uuid,
-    pub image: image::DynamicImage,
+    pub image: Arc<image::DynamicImage>,
     pub metadata: CaptureMetadata,
 }
 
@@ -37,7 +37,7 @@ pub struct CaptureResult {
 /// Used by capture, AI processing, and file operations.
 #[derive(Clone)]
 pub struct ImageStore {
-    images: Arc<RwLock<HashMap<Uuid, image::DynamicImage>>>,
+    images: Arc<RwLock<HashMap<Uuid, Arc<image::DynamicImage>>>>,
 }
 
 impl ImageStore {
@@ -47,15 +47,15 @@ impl ImageStore {
         }
     }
 
-    pub fn insert(&self, id: Uuid, image: image::DynamicImage) {
+    pub fn insert(&self, id: Uuid, image: Arc<image::DynamicImage>) {
         self.images.write().unwrap().insert(id, image);
     }
 
-    pub fn get(&self, id: &Uuid) -> Option<image::DynamicImage> {
+    pub fn get(&self, id: &Uuid) -> Option<Arc<image::DynamicImage>> {
         self.images.read().unwrap().get(id).cloned()
     }
 
-    pub fn remove(&self, id: &Uuid) -> Option<image::DynamicImage> {
+    pub fn remove(&self, id: &Uuid) -> Option<Arc<image::DynamicImage>> {
         self.images.write().unwrap().remove(id)
     }
 }
