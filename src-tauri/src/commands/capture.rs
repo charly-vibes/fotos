@@ -44,19 +44,24 @@ pub async fn take_screenshot(
     store: tauri::State<'_, ImageStore>,
     app: tauri::AppHandle,
 ) -> Result<ScreenshotResponse, String> {
-    // Tracer-bullet: only support fullscreen mode (monitor selection not yet implemented)
     let _ = monitor;
-    if mode != "fullscreen" {
-        return Err(format!(
-            "Mode '{}' not yet implemented (tracer supports fullscreen only)",
-            mode
-        ));
-    }
 
-    // Capture fullscreen using xcap
-    let image = crate::capture::xcap_backend::capture_fullscreen()
-        .await
-        .map_err(|e| format!("Capture failed: {}", e))?;
+    let image = match mode.as_str() {
+        "fullscreen" => crate::capture::xcap_backend::capture_fullscreen()
+            .await
+            .map_err(|e| format!("Capture failed: {}", e))?,
+        "region" => {
+            return Err(
+                "Region capture is handled in-app; use fullscreen + crop_image".into(),
+            );
+        }
+        other => {
+            return Err(format!(
+                "Mode '{}' not yet implemented",
+                other
+            ));
+        }
+    };
 
     let image = Arc::new(image);
     let width = image.width();
@@ -86,6 +91,50 @@ pub async fn take_screenshot(
 
     Ok(ScreenshotResponse {
         id: id.to_string(),
+        width,
+        height,
+        data_url,
+    })
+}
+
+#[tauri::command]
+pub fn crop_image(
+    image_id: String,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    store: tauri::State<'_, ImageStore>,
+) -> Result<ScreenshotResponse, String> {
+    let id = Uuid::parse_str(&image_id)
+        .map_err(|_| format!("Invalid image ID: {image_id}"))?;
+    let base = store
+        .get(&id)
+        .ok_or_else(|| format!("No image found for ID: {image_id}"))?;
+
+    // Clamp to image bounds to avoid panic
+    let img_w = base.width();
+    let img_h = base.height();
+    let x = x.min(img_w.saturating_sub(1));
+    let y = y.min(img_h.saturating_sub(1));
+    let width = width.min(img_w - x);
+    let height = height.min(img_h - y);
+
+    let cropped = Arc::new(base.crop_imm(x, y, width, height));
+    let new_id = Uuid::new_v4();
+    store.insert(new_id, Arc::clone(&cropped));
+
+    let mut png_data = Vec::new();
+    cropped
+        .write_to(&mut Cursor::new(&mut png_data), image::ImageFormat::Png)
+        .map_err(|e| format!("PNG encoding failed: {e}"))?;
+    let data_url = format!(
+        "data:image/png;base64,{}",
+        BASE64_STANDARD.encode(&png_data)
+    );
+
+    Ok(ScreenshotResponse {
+        id: new_id.to_string(),
         width,
         height,
         data_url,

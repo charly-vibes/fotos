@@ -131,6 +131,35 @@ body {
   padding: 12px;
 }
 
+/* Region picker overlay */
+#region-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  cursor: crosshair;
+  user-select: none;
+}
+
+#region-picker-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#region-picker-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  pointer-events: none;
+}
+
 /* Status bar */
 #statusbar {
   grid-column: 1 / -1;

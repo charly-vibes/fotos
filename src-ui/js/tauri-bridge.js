@@ -19,6 +19,10 @@ export async function listWindows() {
   return invoke('list_windows');
 }
 
+export async function cropImage(imageId, x, y, width, height) {
+  return invoke('crop_image', { imageId, x, y, width, height });
+}
+
 export async function runOcr(imageId, lang = null) {
   return invoke('run_ocr', { imageId, lang });
 }

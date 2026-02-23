@@ -19,6 +19,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::ping,
             commands::capture::take_screenshot,
+            commands::capture::crop_image,
             commands::capture::list_monitors,
             commands::capture::list_windows,
             commands::ai::run_ocr,

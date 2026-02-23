@@ -8,7 +8,8 @@ import { AddAnnotationCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { ping, takeScreenshot, runOcr, saveImage } from './tauri-bridge.js';
+import { ping, takeScreenshot, cropImage, runOcr, saveImage } from './tauri-bridge.js';
+import { RegionPicker } from './ui/region-picker.js';
 
 const { listen } = window.__TAURI__.event;
 
@@ -60,6 +61,8 @@ async function init() {
   const engine = new CanvasEngine(baseCanvas, annoCanvas, activeCanvas);
   const history = new History();
   const selectionManager = new SelectionManager();
+
+  const regionPicker = new RegionPicker();
 
   initToolbar(store);
   initAiPanel(store);
@@ -128,8 +131,34 @@ async function init() {
         await doSave();
         break;
 
-      // Placeholder for other actions
       case 'capture-region':
+        try {
+          // 1. Capture full screen silently
+          const result = await takeScreenshot('fullscreen');
+          // 2. Decode to bitmap for the picker
+          const resp = await fetch(result.data_url);
+          const blob = await resp.blob();
+          const bitmap = await createImageBitmap(blob);
+          // 3. Show picker overlay
+          regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
+            try {
+              const cropped = await cropImage(result.id, ix, iy, iw, ih);
+              const { width, height } = await engine.loadImage(cropped.data_url);
+              store.set('currentImageId', cropped.id);
+              document.getElementById('status-dimensions').textContent = `${width}×${height}`;
+              setStatusMessage('Region captured');
+            } catch (err) {
+              setStatusMessage(`Crop failed: ${err}`, false);
+            }
+          }, () => {
+            setStatusMessage('Region capture cancelled', false);
+          });
+        } catch (error) {
+          setStatusMessage(`Capture failed: ${error}`, false);
+        }
+        break;
+
+      // Placeholder for other actions
       case 'capture-window':
       case 'auto-blur':
       case 'ai-analyze':
