@@ -180,33 +180,188 @@ export class CanvasEngine {
     ctx.lineWidth = shape.strokeWidth ?? 2;
     ctx.strokeStyle = shape.strokeColor || '#FF0000';
 
-    if (shape.type === 'rect') {
-      if (shape.fillColor && shape.fillColor !== 'transparent') {
-        ctx.fillStyle = shape.fillColor;
-        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+    switch (shape.type) {
+      case 'rect': {
+        if (shape.fillColor && shape.fillColor !== 'transparent') {
+          ctx.fillStyle = shape.fillColor;
+          ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+        }
+        ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+        break;
       }
-      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+
+      case 'arrow': {
+        const pts = shape.points;
+        if (!pts || pts.length < 2) break;
+        const [p1, p2] = pts;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+        // Filled arrowhead triangle at p2
+        const headLen = Math.max((shape.strokeWidth ?? 2) * 5, 12);
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        const wing = Math.PI / 6;
+        ctx.beginPath();
+        ctx.moveTo(p2.x, p2.y);
+        ctx.lineTo(p2.x - headLen * Math.cos(angle - wing), p2.y - headLen * Math.sin(angle - wing));
+        ctx.lineTo(p2.x - headLen * Math.cos(angle + wing), p2.y - headLen * Math.sin(angle + wing));
+        ctx.closePath();
+        ctx.fillStyle = shape.strokeColor || '#FF0000';
+        ctx.fill();
+        break;
+      }
+
+      case 'ellipse': {
+        const cx = shape.x + shape.width / 2;
+        const cy = shape.y + shape.height / 2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.abs(shape.width / 2), Math.abs(shape.height / 2), 0, 0, Math.PI * 2);
+        if (shape.fillColor && shape.fillColor !== 'transparent') {
+          ctx.fillStyle = shape.fillColor;
+          ctx.fill();
+        }
+        ctx.stroke();
+        break;
+      }
+
+      case 'text': {
+        ctx.font = `${shape.fontSize || 20}px ${shape.fontFamily || 'sans-serif'}`;
+        ctx.fillStyle = shape.strokeColor || '#FF0000';
+        ctx.textBaseline = 'top';
+        ctx.fillText(shape.text || '', shape.x, shape.y);
+        break;
+      }
+
+      case 'blur': {
+        if (!this.#image) break;
+        const blockSize = Math.max(1, shape.blurRadius || 10);
+        const sw = Math.max(1, Math.ceil(shape.width / blockSize));
+        const sh = Math.max(1, Math.ceil(shape.height / blockSize));
+        const off = new OffscreenCanvas(sw, sh);
+        const offCtx = off.getContext('2d');
+        offCtx.imageSmoothingEnabled = false;
+        offCtx.drawImage(this.#image, shape.x, shape.y, shape.width, shape.height, 0, 0, sw, sh);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(off, 0, 0, sw, sh, shape.x, shape.y, shape.width, shape.height);
+        ctx.imageSmoothingEnabled = true;
+        break;
+      }
+
+      case 'step': {
+        const size = shape.fontSize || 24;
+        const radius = size / 2;
+        ctx.beginPath();
+        ctx.arc(shape.x, shape.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = shape.strokeColor || '#FF0000';
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${Math.floor(size * 0.6)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(shape.stepNumber ?? 1), shape.x, shape.y);
+        break;
+      }
+
+      case 'freehand': {
+        const pts = shape.points;
+        if (!pts || pts.length < 2) break;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        break;
+      }
+
+      case 'highlight': {
+        // Always 0.4 opacity per spec, regardless of shape.opacity
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = shape.highlightColor || '#FFFF00';
+        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+        break;
+      }
     }
+
     ctx.restore();
+  }
+
+  // Returns bounding box {x, y, w, h} for selection indicator.
+  #getShapeBBox(shape) {
+    switch (shape.type) {
+      case 'rect':
+      case 'ellipse':
+      case 'blur':
+      case 'highlight':
+        return { x: shape.x, y: shape.y, w: shape.width || 0, h: shape.height || 0 };
+      case 'arrow':
+      case 'freehand': {
+        const pts = shape.points;
+        if (!pts || pts.length === 0) return null;
+        const xs = pts.map(p => p.x);
+        const ys = pts.map(p => p.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+      }
+      case 'text': {
+        const size = shape.fontSize || 20;
+        const approxW = size * (shape.text?.length || 1) * 0.6;
+        return { x: shape.x, y: shape.y, w: approxW, h: size * 1.4 };
+      }
+      case 'step': {
+        const r = (shape.fontSize || 24) / 2;
+        return { x: shape.x - r, y: shape.y - r, w: r * 2, h: r * 2 };
+      }
+      default:
+        return null;
+    }
   }
 
   #drawSelectionIndicator(ctx, shape) {
     if (!shape) return;
+    const bbox = this.#getShapeBBox(shape);
+    if (!bbox) return;
     ctx.save();
     ctx.strokeStyle = '#0066FF';
-    // Keep selection border visually 2px regardless of zoom level
     ctx.lineWidth = 2 / this.#zoom;
     ctx.setLineDash([5 / this.#zoom, 5 / this.#zoom]);
+    const p = 4 / this.#zoom;
+    ctx.strokeRect(bbox.x - p, bbox.y - p, bbox.w + p * 2, bbox.h + p * 2);
+    ctx.restore();
+  }
 
-    if (shape.type === 'rect') {
-      const padding = 4 / this.#zoom;
-      ctx.strokeRect(
-        shape.x - padding,
-        shape.y - padding,
-        shape.width + padding * 2,
-        shape.height + padding * 2,
-      );
-    }
+  // Draw a crop selection overlay: dims everything outside rect and shows a
+  // dashed border.  Pass null to clear.
+  renderCropOverlay(rect) {
+    const ctx = this.#activeCtx;
+    ctx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
+    if (!rect) return;
+
+    const W = this.#container.clientWidth;
+    const H = this.#container.clientHeight;
+
+    // Semi-transparent dark overlay (CSS pixel space)
+    ctx.save();
+    ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // Punch a hole for the selected region (image space)
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    this.#applyTransform(ctx);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.restore();
+
+    // White dashed border (image space)
+    ctx.save();
+    this.#applyTransform(ctx);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1 / this.#zoom;
+    ctx.setLineDash([5 / this.#zoom, 3 / this.#zoom]);
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     ctx.restore();
   }
 }

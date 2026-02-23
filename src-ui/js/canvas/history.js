@@ -28,6 +28,15 @@ export class History {
     return cmd.execute(annotations);
   }
 
+  // Add a pre-executed command to the undo stack without calling execute().
+  // Used for operations like crop that are applied via async side-channels
+  // before the command object is created.
+  record(cmd) {
+    this.#undoStack.push(cmd);
+    this.#redoStack = [];
+    if (this.#undoStack.length > this.#maxSize) this.#undoStack.shift();
+  }
+
   get canUndo() { return this.#undoStack.length > 0; }
   get canRedo() { return this.#redoStack.length > 0; }
 }
