@@ -44,7 +44,8 @@ pub async fn take_screenshot(
     store: tauri::State<'_, ImageStore>,
     app: tauri::AppHandle,
 ) -> Result<ScreenshotResponse, String> {
-    // Tracer-bullet: only support fullscreen mode
+    // Tracer-bullet: only support fullscreen mode (monitor selection not yet implemented)
+    let _ = monitor;
     if mode != "fullscreen" {
         return Err(format!(
             "Mode '{}' not yet implemented (tracer supports fullscreen only)",

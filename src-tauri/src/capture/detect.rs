@@ -18,7 +18,7 @@ pub fn detect_platform() -> Platform {
         let session_type = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
         let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
         let wayland_display = std::env::var("WAYLAND_DISPLAY").unwrap_or_default();
-        return detect_linux(&session_type, &desktop, &wayland_display);
+        detect_linux(&session_type, &desktop, &wayland_display)
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "windows")))]
@@ -27,8 +27,8 @@ pub fn detect_platform() -> Platform {
 
 /// Pure detection logic for Linux, separated for testability.
 fn detect_linux(session_type: &str, desktop: &str, wayland_display: &str) -> Platform {
-    let is_wayland = session_type == "wayland"
-        || (session_type.is_empty() && !wayland_display.is_empty());
+    let is_wayland =
+        session_type == "wayland" || (session_type.is_empty() && !wayland_display.is_empty());
 
     if is_wayland {
         if desktop.contains("GNOME") {

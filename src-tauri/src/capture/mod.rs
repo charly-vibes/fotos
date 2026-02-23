@@ -2,7 +2,6 @@ pub mod detect;
 pub mod portal;
 pub mod xcap_backend;
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

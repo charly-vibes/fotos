@@ -175,10 +175,7 @@ fn composite_rectangle(composite: &mut image::RgbaImage, anno: &Annotation) {
     }
 
     // Stroke: centered on the rect edge (half inside, half outside).
-    let stroke_color_str = anno
-        .stroke_color
-        .as_deref()
-        .unwrap_or("#FF0000");
+    let stroke_color_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
     let Ok(stroke_color) = parse_color(stroke_color_str) else {
         return;
     };
@@ -289,7 +286,10 @@ mod tests {
 
     fn make_annotation(
         ann_type: &str,
-        x: f64, y: f64, w: f64, h: f64,
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
         stroke_color: Option<&str>,
         fill_color: Option<&str>,
         stroke_width: Option<f64>,
@@ -347,7 +347,17 @@ mod tests {
     #[test]
     fn compositing_stroke_pixel_is_stroke_color() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
-        let anno = make_annotation("rect", 10.0, 10.0, 30.0, 20.0, Some("#ff0000"), Some("transparent"), Some(1.0), Some(1.0));
+        let anno = make_annotation(
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("#ff0000"),
+            Some("transparent"),
+            Some(1.0),
+            Some(1.0),
+        );
         composite_rectangle(&mut img, &anno);
         // Top-left corner of rect should be red (stroke).
         assert_eq!(*img.get_pixel(10, 10), Rgba([255, 0, 0, 255]));
@@ -357,7 +367,17 @@ mod tests {
     #[test]
     fn compositing_outside_pixel_unchanged() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
-        let anno = make_annotation("rect", 10.0, 10.0, 30.0, 20.0, Some("#ff0000"), Some("transparent"), Some(1.0), Some(1.0));
+        let anno = make_annotation(
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("#ff0000"),
+            Some("transparent"),
+            Some(1.0),
+            Some(1.0),
+        );
         composite_rectangle(&mut img, &anno);
         assert_eq!(*img.get_pixel(0, 0), Rgba([255, 255, 255, 255]));
         assert_eq!(*img.get_pixel(99, 99), Rgba([255, 255, 255, 255]));
@@ -367,12 +387,22 @@ mod tests {
     #[test]
     fn compositing_fill_pixel_is_fill_color() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
-        let anno = make_annotation("rect", 10.0, 10.0, 30.0, 20.0, Some("transparent"), Some("#0000ff"), Some(0.0), Some(1.0));
+        let anno = make_annotation(
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("transparent"),
+            Some("#0000ff"),
+            Some(0.0),
+            Some(1.0),
+        );
         composite_rectangle(&mut img, &anno);
         // Interior pixel (not on edge) should be blue.
         let px = img.get_pixel(20, 15);
         assert_eq!(px[2], 255); // blue channel
-        assert_eq!(px[0], 0);   // not red
+        assert_eq!(px[0], 0); // not red
     }
 
     // ── Annotation serde (camelCase round-trip) ──────────────────────────────

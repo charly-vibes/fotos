@@ -2,11 +2,12 @@
 ///
 /// Defines tools, resources, and prompts exposed to MCP hosts.
 /// Delegates actual work to the main Fotos app via IPC bridge.
-
+#[allow(dead_code)]
 pub struct FotosMcpServer {
     // TODO: hold IPC connection to main app
 }
 
+#[allow(dead_code)]
 impl FotosMcpServer {
     pub fn new() -> Self {
         Self {}

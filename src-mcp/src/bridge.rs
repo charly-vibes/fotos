@@ -4,10 +4,12 @@
 /// named pipe on Windows) to delegate MCP tool calls.
 use anyhow::Result;
 
+#[allow(dead_code)]
 pub struct AppBridge {
     // TODO: hold IPC connection
 }
 
+#[allow(dead_code)]
 impl AppBridge {
     pub async fn connect() -> Result<Self> {
         // TODO: connect to main app IPC socket

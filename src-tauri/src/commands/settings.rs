@@ -100,7 +100,6 @@ pub struct Settings {
     pub ui: UiSettings,
 }
 
-
 #[tauri::command]
 pub fn get_settings() -> Result<Settings, String> {
     // Tracer-bullet: return hardcoded defaults (no persistence)

@@ -62,12 +62,12 @@ pub async fn capture_fullscreen() -> Result<DynamicImage> {
     .map_err(|e| anyhow::anyhow!("Task join error: {}", e))?
 }
 
-pub async fn capture_monitor(index: u32) -> Result<image::DynamicImage> {
+pub async fn capture_monitor(_index: u32) -> Result<image::DynamicImage> {
     // TODO: capture specific monitor by index
     anyhow::bail!("xcap monitor capture not yet implemented")
 }
 
-pub async fn capture_window(window_id: u64) -> Result<image::DynamicImage> {
+pub async fn capture_window(_window_id: u64) -> Result<image::DynamicImage> {
     // TODO: capture specific window
     anyhow::bail!("xcap window capture not yet implemented")
 }
