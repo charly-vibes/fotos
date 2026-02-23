@@ -165,24 +165,7 @@ async function init() {
         break;
 
       case 'capture-region':
-        try {
-          const result = await takeScreenshot('fullscreen');
-          const resp = await fetch(result.data_url);
-          const blob = await resp.blob();
-          const bitmap = await createImageBitmap(blob);
-          regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
-            try {
-              const cropped = await cropImage(result.id, ix, iy, iw, ih);
-              await loadImageAndUpdate(cropped.data_url, cropped.id);
-              store.set('annotations', []);
-              setStatusMessage('Region captured');
-            } catch (err) {
-              setStatusMessage(`Crop failed: ${err}`, false);
-            }
-          }, () => { setStatusMessage('Region capture cancelled', false); });
-        } catch (error) {
-          setStatusMessage(`Capture failed: ${error}`, false);
-        }
+        await doCaptureRegion();
         break;
 
       case 'copy-clipboard':
@@ -220,6 +203,27 @@ async function init() {
     selectionManager.deselect();
     engine.renderAnnotations(newAnnotations, null);
     setStatusMessage('Redone');
+  }
+
+  async function doCaptureRegion() {
+    try {
+      const result = await takeScreenshot('fullscreen');
+      const resp = await fetch(result.data_url);
+      const blob = await resp.blob();
+      const bitmap = await createImageBitmap(blob);
+      regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
+        try {
+          const cropped = await cropImage(result.id, ix, iy, iw, ih);
+          await loadImageAndUpdate(cropped.data_url, cropped.id);
+          store.set('annotations', []);
+          setStatusMessage('Region captured');
+        } catch (err) {
+          setStatusMessage(`Crop failed: ${err}`, false);
+        }
+      }, () => { setStatusMessage('Region capture cancelled', false); });
+    } catch (error) {
+      setStatusMessage(`Capture failed: ${error}`, false);
+    }
   }
 
   async function doSave() {
@@ -281,6 +285,13 @@ async function init() {
   let isPanning = false;
 
   document.addEventListener('keydown', async (e) => {
+    // Ctrl+Shift+S — region capture
+    if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+      e.preventDefault();
+      await doCaptureRegion();
+      return;
+    }
+
     // Ctrl+Shift+A — fullscreen capture
     if (e.ctrlKey && e.shiftKey && e.key === 'A') {
       e.preventDefault();
