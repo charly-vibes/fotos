@@ -3,6 +3,14 @@
 /// Layer 0 (canvas-base):        Screenshot image — redrawn only on load/zoom/pan
 /// Layer 1 (canvas-annotations): Committed annotations — redrawn on annotation change
 /// Layer 2 (canvas-active):      Active tool preview — redrawn on every mouse move
+///
+/// Coordinate systems:
+///   - Image space:  pixels in the source image (used for annotation storage)
+///   - CSS space:    device-independent pixels in the browser (mouse events)
+///   - Backing store: physical pixels = CSS pixels × DPR
+///
+/// Transform: backing → CSS via ctx.setTransform(dpr,0,0,dpr,0,0)
+///            CSS → image via translate(panX, panY) then scale(zoom, zoom)
 
 export class CanvasEngine {
   #baseCanvas;
@@ -11,10 +19,15 @@ export class CanvasEngine {
   #baseCtx;
   #annoCtx;
   #activeCtx;
+  #container;
   #image = null;
   #zoom = 1;
   #panX = 0;
   #panY = 0;
+  #dpr = 1;
+  // Cached for re-render on resize
+  #annotations = [];
+  #selectedAnnotation = null;
 
   constructor(baseCanvas, annoCanvas, activeCanvas) {
     this.#baseCanvas = baseCanvas;
@@ -23,117 +36,177 @@ export class CanvasEngine {
     this.#baseCtx = baseCanvas.getContext('2d');
     this.#annoCtx = annoCanvas.getContext('2d');
     this.#activeCtx = activeCanvas.getContext('2d');
+    this.#container = baseCanvas.parentElement;
+    this.#dpr = window.devicePixelRatio || 1;
 
-    // TODO: attach resize observer for dynamic sizing
+    new ResizeObserver(() => this.#resize()).observe(this.#container);
+    this.#watchDpr();
+    this.#resize();
   }
+
+  // Re-register DPR listener each time it fires (DPR changes when window moves monitors)
+  #watchDpr() {
+    matchMedia(`(resolution: ${this.#dpr}dppx)`).addEventListener('change', () => {
+      this.#dpr = window.devicePixelRatio || 1;
+      this.#resize();
+      this.#watchDpr();
+    }, { once: true });
+  }
+
+  #resize() {
+    const w = Math.floor(this.#container.clientWidth * this.#dpr);
+    const h = Math.floor(this.#container.clientHeight * this.#dpr);
+    for (const canvas of [this.#baseCanvas, this.#annoCanvas, this.#activeCanvas]) {
+      canvas.width = w;
+      canvas.height = h;
+      // CSS display size is handled by stylesheet (position:absolute; width:100%; height:100%)
+    }
+    this.#renderAll();
+  }
+
+  // Set context transform: backing-store scale (DPR) + pan + zoom.
+  // After this call, all drawing coordinates are in image pixel space.
+  #applyTransform(ctx) {
+    ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
+    ctx.translate(this.#panX, this.#panY);
+    ctx.scale(this.#zoom, this.#zoom);
+  }
+
+  #renderAll() {
+    this.renderBase();
+    this.#renderAnnotationsInternal();
+    // Active layer clears on resize — don't re-show a stale preview
+    this.#activeCtx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
+  }
+
+  // --- Public API ---
 
   async loadImage(dataUrl) {
-    // Convert base64 data URL to Blob
     const response = await fetch(dataUrl);
     const blob = await response.blob();
-
-    // Create ImageBitmap for efficient rendering
     this.#image = await createImageBitmap(blob);
-
-    // Size all canvas layers to match image dimensions
-    const width = this.#image.width;
-    const height = this.#image.height;
-
-    this.#baseCanvas.width = width;
-    this.#baseCanvas.height = height;
-    this.#annoCanvas.width = width;
-    this.#annoCanvas.height = height;
-    this.#activeCanvas.width = width;
-    this.#activeCanvas.height = height;
-
-    // Render the base layer
-    this.renderBase();
-
-    return { width, height };
+    this.#renderAll();
+    return { width: this.#image.width, height: this.#image.height };
   }
 
+  // Convert CSS-pixel mouse coordinates to image-pixel coordinates.
   screenToImage(screenX, screenY) {
-    // TODO: apply inverse of current transform (zoom + pan)
     return {
       x: (screenX - this.#panX) / this.#zoom,
       y: (screenY - this.#panY) / this.#zoom,
     };
   }
 
+  setZoom(z) {
+    this.#zoom = Math.max(0.1, Math.min(10.0, z));
+    this.#renderAll();
+  }
+
+  getZoom() { return this.#zoom; }
+  zoomBy(factor) { this.setZoom(this.#zoom * factor); }
+
+  setPan(x, y) {
+    this.#panX = x;
+    this.#panY = y;
+    this.#renderAll();
+  }
+
+  getPan() { return { x: this.#panX, y: this.#panY }; }
+
+  get hasImage() { return this.#image !== null; }
+  get imageWidth() { return this.#image?.width ?? 0; }
+  get imageHeight() { return this.#image?.height ?? 0; }
+
   renderBase() {
-    if (!this.#image) return;
+    const ctx = this.#baseCtx;
+    ctx.clearRect(0, 0, this.#baseCanvas.width, this.#baseCanvas.height);
 
-    // Clear canvas
-    this.#baseCtx.clearRect(0, 0, this.#baseCanvas.width, this.#baseCanvas.height);
+    if (!this.#image) {
+      // Empty-state placeholder — draw in CSS pixel space (no zoom/pan)
+      ctx.save();
+      ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
+      const color = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-secondary').trim() || '#888';
+      ctx.fillStyle = color;
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        'Capture or open a screenshot to begin',
+        this.#container.clientWidth / 2,
+        this.#container.clientHeight / 2,
+      );
+      ctx.restore();
+      return;
+    }
 
-    // Draw image at 1:1 scale (no zoom/pan for tracer-bullet)
-    this.#baseCtx.drawImage(this.#image, 0, 0);
+    this.#applyTransform(ctx);
+    ctx.drawImage(this.#image, 0, 0);
   }
 
   renderAnnotations(annotations, selectedAnnotation = null) {
-    if (!annotations) return;
+    this.#annotations = annotations ?? [];
+    this.#selectedAnnotation = selectedAnnotation ?? null;
+    this.#renderAnnotationsInternal();
+  }
 
-    // Clear annotations canvas
-    this.#annoCtx.clearRect(0, 0, this.#annoCanvas.width, this.#annoCanvas.height);
+  #renderAnnotationsInternal() {
+    const ctx = this.#annoCtx;
+    ctx.clearRect(0, 0, this.#annoCanvas.width, this.#annoCanvas.height);
+    if (!this.#annotations.length && !this.#selectedAnnotation) return;
 
-    // Draw each annotation
-    for (const anno of annotations) {
-      this.#drawShape(this.#annoCtx, anno);
+    this.#applyTransform(ctx);
+    for (const anno of this.#annotations) {
+      this.#drawShape(ctx, anno);
     }
-
-    // Draw selection indicator if annotation is selected
-    if (selectedAnnotation) {
-      this.#drawSelectionIndicator(this.#annoCtx, selectedAnnotation);
+    if (this.#selectedAnnotation) {
+      this.#drawSelectionIndicator(ctx, this.#selectedAnnotation);
     }
   }
 
   renderActive(previewShape) {
-    // Clear active canvas
-    this.#activeCtx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
-
-    // Draw preview shape if provided
+    const ctx = this.#activeCtx;
+    ctx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
     if (previewShape) {
-      this.#drawShape(this.#activeCtx, previewShape);
+      this.#applyTransform(ctx);
+      this.#drawShape(ctx, previewShape);
     }
   }
 
   #drawShape(ctx, shape) {
     if (!shape) return;
-
-    ctx.strokeStyle = shape.stroke_color || '#FF0000';
-    ctx.lineWidth = shape.stroke_width || 2;
+    ctx.save();
+    ctx.globalAlpha = shape.opacity ?? 1;
+    ctx.lineWidth = shape.strokeWidth ?? 2;
+    ctx.strokeStyle = shape.strokeColor || '#FF0000';
 
     if (shape.type === 'rect') {
+      if (shape.fillColor && shape.fillColor !== 'transparent') {
+        ctx.fillStyle = shape.fillColor;
+        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+      }
       ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
     }
-    // TODO: add other shape types (ellipse, arrow, etc.) when implemented
+    ctx.restore();
   }
 
   #drawSelectionIndicator(ctx, shape) {
     if (!shape) return;
-
-    // Draw dashed border around selected annotation
     ctx.save();
     ctx.strokeStyle = '#0066FF';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    // Keep selection border visually 2px regardless of zoom level
+    ctx.lineWidth = 2 / this.#zoom;
+    ctx.setLineDash([5 / this.#zoom, 5 / this.#zoom]);
 
     if (shape.type === 'rect') {
-      // Draw selection border with 4px padding
-      const padding = 4;
+      const padding = 4 / this.#zoom;
       ctx.strokeRect(
         shape.x - padding,
         shape.y - padding,
         shape.width + padding * 2,
-        shape.height + padding * 2
+        shape.height + padding * 2,
       );
     }
-
     ctx.restore();
-  }
-
-  exportComposite(annotations, format = 'png') {
-    // TODO: create offscreen canvas at original image dimensions,
-    // draw base image, draw all annotations at original scale, return as Blob
   }
 }

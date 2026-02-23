@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Annotation {
     pub id: String,
     #[serde(rename = "type")]
@@ -23,6 +24,9 @@ pub struct Annotation {
     pub opacity: Option<f64>,
     pub text: Option<String>,
     pub font_size: Option<f64>,
+    pub points: Option<Vec<serde_json::Value>>,
+    pub created_at: Option<String>,
+    pub locked: Option<bool>,
 }
 
 #[tauri::command]
