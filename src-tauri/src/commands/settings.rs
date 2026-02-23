@@ -92,7 +92,7 @@ impl Default for UiSettings {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Settings {
     pub capture: CaptureSettings,
     pub annotation: AnnotationSettings,
@@ -100,16 +100,6 @@ pub struct Settings {
     pub ui: UiSettings,
 }
 
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            capture: CaptureSettings::default(),
-            annotation: AnnotationSettings::default(),
-            ai: AiSettings::default(),
-            ui: UiSettings::default(),
-        }
-    }
-}
 
 #[tauri::command]
 pub fn get_settings() -> Result<Settings, String> {

@@ -157,9 +157,9 @@ fn generate_default_path() -> Result<PathBuf, String> {
 }
 
 fn expand_tilde(path: &str) -> PathBuf {
-    if path.starts_with("~/") {
+    if let Some(stripped) = path.strip_prefix("~/") {
         if let Some(home) = UserDirs::new().and_then(|dirs| dirs.home_dir().to_path_buf().into()) {
-            return home.join(&path[2..]);
+            return home.join(stripped);
         }
     }
     PathBuf::from(path)
