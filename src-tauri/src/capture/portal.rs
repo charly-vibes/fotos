@@ -2,7 +2,6 @@
 ///
 /// Used on GNOME Wayland, KDE Wayland, and other Wayland compositors
 /// that implement the Screenshot portal.
-
 use anyhow::Result;
 
 pub async fn capture_via_portal() -> Result<image::DynamicImage> {

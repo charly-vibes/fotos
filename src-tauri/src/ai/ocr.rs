@@ -2,7 +2,6 @@
 ///
 /// Extracts text from screenshot images with bounding box information
 /// for each detected word/region.
-
 use anyhow::Result;
 
 pub struct OcrRegion {

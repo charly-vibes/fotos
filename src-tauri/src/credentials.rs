@@ -4,7 +4,6 @@
 /// - GNOME Keyring (Linux GNOME)
 /// - KWallet (Linux KDE)
 /// - Windows Credential Manager
-
 use anyhow::Result;
 
 const SERVICE_NAME: &str = "fotos";

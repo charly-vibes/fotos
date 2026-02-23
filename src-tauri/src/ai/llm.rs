@@ -2,7 +2,6 @@
 ///
 /// Supports Claude (Anthropic), GPT-4o (OpenAI), and Gemini (Google)
 /// for image understanding and analysis.
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 

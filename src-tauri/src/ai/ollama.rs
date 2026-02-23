@@ -2,7 +2,6 @@
 ///
 /// Connects to a local Ollama instance for image analysis
 /// without requiring cloud API keys.
-
 use anyhow::Result;
 
 pub struct OllamaConfig {

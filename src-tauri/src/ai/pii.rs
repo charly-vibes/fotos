@@ -2,7 +2,6 @@
 ///
 /// Runs OCR first, then applies regex pattern matching on extracted text
 /// with bounding boxes to identify sensitive information.
-
 use anyhow::Result;
 
 pub struct PiiMatch {

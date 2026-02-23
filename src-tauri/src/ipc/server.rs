@@ -2,7 +2,6 @@
 ///
 /// Listens on a Unix socket (Linux) or named pipe (Windows) for
 /// commands from the MCP server process.
-
 use anyhow::Result;
 
 pub async fn start_ipc_server() -> Result<()> {

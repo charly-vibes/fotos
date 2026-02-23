@@ -2,7 +2,6 @@
 ///
 /// Used on X11 Linux and Windows where direct capture APIs are available
 /// without requiring a portal.
-
 use anyhow::Result;
 use image::{DynamicImage, ImageBuffer, Rgba};
 use xcap::Monitor;

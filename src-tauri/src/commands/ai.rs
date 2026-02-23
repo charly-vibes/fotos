@@ -42,8 +42,7 @@ pub fn run_ocr(
     store: tauri::State<'_, ImageStore>,
 ) -> Result<OcrResult, String> {
     // Parse UUID
-    let uuid = Uuid::parse_str(&image_id)
-        .map_err(|e| format!("Invalid image ID: {}", e))?;
+    let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {}", e))?;
 
     // Get image from store
     let image = store
@@ -62,8 +61,12 @@ pub fn run_ocr(
 
     // Initialize with default tessdata directory (empty string = use system default)
     // On Linux, this is typically /usr/share/tessdata or /usr/share/tesseract-ocr/*/tessdata
-    api.init("", &lang_str)
-        .map_err(|e| format!("Failed to initialize Tesseract with language '{}': {}", lang_str, e))?;
+    api.init("", &lang_str).map_err(|e| {
+        format!(
+            "Failed to initialize Tesseract with language '{}': {}",
+            lang_str, e
+        )
+    })?;
 
     // Convert u32 dimensions to i32 for Tesseract API
     let width_i32 = width as i32;

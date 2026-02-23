@@ -2,7 +2,6 @@
 ///
 /// Connects to the Unix socket (Linux) or named pipe (Windows) that
 /// the main app's IPC server listens on.
-
 use anyhow::Result;
 
 pub async fn connect_to_app() -> Result<()> {

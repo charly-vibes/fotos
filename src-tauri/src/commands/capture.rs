@@ -45,7 +45,10 @@ pub async fn take_screenshot(
 ) -> Result<ScreenshotResponse, String> {
     // Tracer-bullet: only support fullscreen mode
     if mode != "fullscreen" {
-        return Err(format!("Mode '{}' not yet implemented (tracer supports fullscreen only)", mode));
+        return Err(format!(
+            "Mode '{}' not yet implemented (tracer supports fullscreen only)",
+            mode
+        ));
     }
 
     // Capture fullscreen using xcap

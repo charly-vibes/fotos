@@ -2,7 +2,6 @@
 ///
 /// Connects to the main app's IPC server (Unix socket on Linux,
 /// named pipe on Windows) to delegate MCP tool calls.
-
 use anyhow::Result;
 
 pub struct AppBridge {

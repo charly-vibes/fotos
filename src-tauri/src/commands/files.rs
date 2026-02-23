@@ -34,8 +34,7 @@ pub fn save_image(
     store: tauri::State<'_, ImageStore>,
 ) -> Result<String, String> {
     // Parse UUID
-    let uuid = Uuid::parse_str(&image_id)
-        .map_err(|e| format!("Invalid image ID: {}", e))?;
+    let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {}", e))?;
 
     // Look up image in store
     let base_image = store
@@ -75,10 +74,7 @@ pub fn save_image(
 }
 
 #[tauri::command]
-pub fn copy_to_clipboard(
-    _image_id: String,
-    _annotations: Vec<Annotation>,
-) -> Result<(), String> {
+pub fn copy_to_clipboard(_image_id: String, _annotations: Vec<Annotation>) -> Result<(), String> {
     // TODO: composite and copy to clipboard
     Err("Not yet implemented".into())
 }
@@ -105,7 +101,12 @@ fn composite_rectangle(composite: &mut image::RgbaImage, anno: &Annotation) {
         return;
     }
 
-    let stroke_color = parse_color(&anno.stroke_color.clone().unwrap_or_else(|| "#FF0000".to_string()));
+    let stroke_color = parse_color(
+        &anno
+            .stroke_color
+            .clone()
+            .unwrap_or_else(|| "#FF0000".to_string()),
+    );
     let stroke_width = anno.stroke_width.unwrap_or(2.0) as i32;
 
     // Draw multiple rects to simulate stroke width
