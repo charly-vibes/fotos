@@ -8,7 +8,7 @@ import { AddAnnotationCommand, CropCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { ping, takeScreenshot, cropImage, runOcr, saveImage } from './tauri-bridge.js';
+import { ping, takeScreenshot, cropImage, runOcr, saveImage, copyToClipboard } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
 const { listen } = window.__TAURI__.event;
@@ -185,10 +185,20 @@ async function init() {
         }
         break;
 
+      case 'copy-clipboard':
+        if (!store.get('currentImageId')) { setStatusMessage('No image loaded', false); return; }
+        try {
+          setStatusMessage('Copying to clipboard...', false);
+          await copyToClipboard(store.get('currentImageId'), store.get('annotations') || []);
+          setStatusMessage('Copied to clipboard');
+        } catch (error) {
+          setStatusMessage(`Copy failed: ${error}`, false);
+        }
+        break;
+
       case 'capture-window':
       case 'auto-blur':
       case 'ai-analyze':
-      case 'copy-clipboard':
         setStatusMessage(`Action '${action}' not yet implemented`, false);
         break;
     }
@@ -493,64 +503,9 @@ async function init() {
       return;
     }
 
-    // Text — show floating textarea.
+    // Text — handled by click event (after press+release) to avoid WebKit blur-on-mouseup.
     if (tool === 'text') {
-      if (pendingTextArea) { pendingTextArea.blur(); return; }
-      const fontSize = 20;
-      const ta = document.createElement('textarea');
-      ta.style.cssText = [
-        `position:absolute`,
-        `left:${e.offsetX}px`,
-        `top:${e.offsetY}px`,
-        `min-width:100px`,
-        `min-height:${Math.ceil(fontSize * engine.getZoom() * 1.4)}px`,
-        `font-size:${fontSize * engine.getZoom()}px`,
-        `font-family:sans-serif`,
-        `color:${store.get('strokeColor') || '#FF0000'}`,
-        `background:transparent`,
-        `border:1px dashed #0066FF`,
-        `outline:none`,
-        `resize:both`,
-        `z-index:100`,
-        `padding:2px`,
-      ].join(';');
-      container.appendChild(ta);
-      pendingTextArea = ta;
-      ta.focus();
-
-      function commitText() {
-        pendingTextArea = null;
-        const text = ta.value.trim();
-        container.removeChild(ta);
-        if (!text) return;
-        const annotation = {
-          id: crypto.randomUUID(),
-          type: 'text',
-          x: imgPt.x,
-          y: imgPt.y,
-          width: 0,
-          height: 0,
-          points: [],
-          text,
-          fontSize,
-          fontFamily: 'sans-serif',
-          strokeColor: store.get('strokeColor'),
-          fillColor: 'transparent',
-          strokeWidth: store.get('strokeWidth'),
-          opacity: store.get('opacity'),
-          createdAt: new Date().toISOString(),
-          locked: false,
-        };
-        const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
-        store.set('annotations', newAnnotations);
-        engine.renderAnnotations(newAnnotations);
-      }
-
-      ta.addEventListener('blur', commitText, { once: true });
-      ta.addEventListener('keydown', (ke) => {
-        if (ke.key === 'Escape') { ta.value = ''; ta.blur(); }
-        ke.stopPropagation(); // don't trigger app-level shortcuts
-      });
+      if (pendingTextArea) { pendingTextArea.blur(); }
       return;
     }
 
@@ -563,6 +518,74 @@ async function init() {
       selectionManager.deselect();
       engine.renderAnnotations(store.get('annotations'), null);
     }
+  });
+
+  // ── Text tool (click) ───────────────────────────────────────────────────────
+  // Using 'click' (fires after mouseup) avoids the WebKit/GTK issue where focus()
+  // called during 'mousedown' is reverted when the browser processes mouseup.
+
+  activeCanvas.addEventListener('click', (e) => {
+    if (store.get('activeTool') !== 'text') return;
+    if (!store.get('currentImageId')) return;
+    if (isPanning) return;
+    if (pendingTextArea) return; // already committed by mousedown
+
+    const imgPt = engine.screenToImage(e.offsetX, e.offsetY);
+    const fontSize = 20;
+    const ta = document.createElement('textarea');
+    ta.style.cssText = [
+      `position:absolute`,
+      `left:${e.offsetX}px`,
+      `top:${e.offsetY}px`,
+      `min-width:100px`,
+      `min-height:${Math.ceil(fontSize * engine.getZoom() * 1.4)}px`,
+      `font-size:${fontSize * engine.getZoom()}px`,
+      `font-family:sans-serif`,
+      `color:${store.get('strokeColor') || '#FF0000'}`,
+      `background:transparent`,
+      `border:1px dashed #0066FF`,
+      `outline:none`,
+      `resize:both`,
+      `z-index:100`,
+      `padding:2px`,
+    ].join(';');
+    container.appendChild(ta);
+    pendingTextArea = ta;
+    ta.focus();
+
+    function commitText() {
+      pendingTextArea = null;
+      const text = ta.value.trim();
+      container.removeChild(ta);
+      if (!text) return;
+      const annotation = {
+        id: crypto.randomUUID(),
+        type: 'text',
+        x: imgPt.x,
+        y: imgPt.y,
+        width: 0,
+        height: 0,
+        points: [],
+        text,
+        fontSize,
+        fontFamily: 'sans-serif',
+        strokeColor: store.get('strokeColor'),
+        fillColor: 'transparent',
+        strokeWidth: store.get('strokeWidth'),
+        opacity: store.get('opacity'),
+        createdAt: new Date().toISOString(),
+        locked: false,
+      };
+      const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
+      store.set('annotations', newAnnotations);
+      engine.renderAnnotations(newAnnotations);
+    }
+
+    ta.addEventListener('blur', commitText, { once: true });
+    ta.addEventListener('keydown', (ke) => {
+      if (ke.key === 'Escape') { ta.value = ''; ta.blur(); }
+      ke.stopPropagation(); // don't trigger app-level shortcuts
+    });
   });
 
   // ── Mouse move ─────────────────────────────────────────────────────────────

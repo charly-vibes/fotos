@@ -1,11 +1,12 @@
 use crate::capture::ImageStore;
+use ab_glyph::{FontVec, PxScale};
 use base64::Engine;
 use chrono::Local;
 use directories::UserDirs;
 use image::Rgba;
 use imageproc::drawing::{
     draw_filled_circle_mut, draw_filled_ellipse_mut, draw_hollow_ellipse_mut,
-    draw_hollow_rect_mut, draw_line_segment_mut,
+    draw_hollow_rect_mut, draw_line_segment_mut, draw_text_mut,
 };
 use imageproc::rect::Rect;
 use serde::Deserialize;
@@ -125,8 +126,32 @@ pub fn composite_image(
 }
 
 #[tauri::command]
-pub fn copy_to_clipboard(_image_id: String, _annotations: Vec<Annotation>) -> Result<(), String> {
-    Err("Not yet implemented".into())
+pub fn copy_to_clipboard(
+    app: tauri::AppHandle,
+    image_id: String,
+    annotations: Vec<Annotation>,
+    store: tauri::State<'_, ImageStore>,
+) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+
+    let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {}", e))?;
+
+    let base_image = store
+        .get(&uuid)
+        .ok_or_else(|| format!("Image not found: {}", image_id))?;
+
+    let mut composite = base_image.to_rgba8();
+    for anno in &annotations {
+        composite_annotation(&mut composite, anno);
+    }
+
+    let (width, height) = composite.dimensions();
+    let rgba_bytes = composite.into_raw();
+    let image = tauri::image::Image::new_owned(rgba_bytes, width, height);
+
+    app.clipboard()
+        .write_image(&image)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))
 }
 
 #[tauri::command]
@@ -148,7 +173,7 @@ fn composite_annotation(composite: &mut image::RgbaImage, anno: &Annotation) {
         "highlight" => composite_highlight(composite, anno),
         "blur" => composite_blur(composite, anno),
         "step" => composite_step(composite, anno),
-        "text" => tracing::debug!("text annotation compositing not yet implemented"),
+        "text" => composite_text(composite, anno),
         other => tracing::debug!("unknown annotation type: {other}"),
     }
 }
@@ -411,7 +436,55 @@ fn composite_step(composite: &mut image::RgbaImage, anno: &Annotation) {
     let Ok(color) = parse_color(stroke_str) else { return };
 
     draw_filled_circle_mut(composite, (cx, cy), radius, color);
-    // Note: step number text rendering requires font embedding — not yet implemented.
+}
+
+fn load_system_font() -> Option<FontVec> {
+    let paths = [
+        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/google-noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/abattis-cantarell/Cantarell-Regular.otf",
+        "/usr/share/fonts/cantarell/Cantarell-Regular.otf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    ];
+    for path in &paths {
+        if let Ok(data) = std::fs::read(path) {
+            if let Ok(font) = FontVec::try_from_vec(data) {
+                return Some(font);
+            }
+        }
+    }
+    tracing::warn!("No system font found; text annotations will not be composited");
+    None
+}
+
+fn composite_text(composite: &mut image::RgbaImage, anno: &Annotation) {
+    let text = match &anno.text {
+        Some(t) if !t.is_empty() => t,
+        _ => return,
+    };
+
+    let Some(font) = load_system_font() else { return };
+
+    let x = anno.x as i32;
+    let y = anno.y as i32;
+    let font_size = anno.font_size.unwrap_or(20.0) as f32;
+    let scale = PxScale { x: font_size, y: font_size };
+
+    let stroke_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
+    let Ok(color) = parse_color(stroke_str) else { return };
+
+    let line_height = (font_size * 1.4) as i32;
+    for (i, line) in text.lines().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let line_y = y + (i as i32 * line_height);
+        draw_text_mut(composite, color, x, line_y, scale, &font, line);
+    }
 }
 
 // ── Line helpers ──────────────────────────────────────────────────────────────
