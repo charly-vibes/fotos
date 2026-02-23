@@ -630,7 +630,7 @@ async function init() {
 
   // ── Mouse up ───────────────────────────────────────────────────────────────
 
-  activeCanvas.addEventListener('mouseup', (e) => {
+  activeCanvas.addEventListener('mouseup', async (e) => {
     if (isPanDragging) {
       isPanDragging = false;
       container.style.cursor = isPanning ? 'grab' : '';
@@ -678,14 +678,14 @@ async function init() {
       return;
     }
 
-    // Crop drag ends on mouseup — selection stays pending until Enter confirms it.
+    // Crop drag ends on mouseup — apply immediately.
     if (isCropDragging && cropStartImg) {
-      cropEndImg = imgPt;
+      isCropDragging = false;
       const r = normalizeRect(cropStartImg.x, cropStartImg.y, imgPt.x, imgPt.y);
-      engine.renderCropOverlay(r);
-      if (r.width > 2 && r.height > 2) {
-        setStatusMessage('Press Enter to crop, Escape to cancel', false);
-      }
+      cropStartImg = null;
+      cropEndImg = null;
+      engine.renderCropOverlay(null);
+      if (r.width > 2 && r.height > 2) await applyCrop(r);
     }
   });
 
