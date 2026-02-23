@@ -17,28 +17,43 @@ pub async fn capture_fullscreen() -> Result<DynamicImage> {
             anyhow::bail!("No monitors detected");
         }
 
-        // For tracer-bullet: capture all monitors and place side-by-side
-        // Find total width and max height
-        let mut total_width: u32 = 0;
-        let mut max_height: u32 = 0;
-
-        for monitor in &monitors {
-            total_width += monitor.width()?;
-            let height = monitor.height()?;
-            if height > max_height {
-                max_height = height;
-            }
+        // Collect monitor geometry using actual position offsets.
+        // This correctly handles vertical stacking, non-contiguous monitors,
+        // and negative offsets (e.g. a monitor placed to the left of the primary).
+        struct MonitorGeom {
+            x: i32,
+            y: i32,
+            width: u32,
+            height: u32,
+            image: ImageBuffer<Rgba<u8>, Vec<u8>>,
         }
 
-        // Create composite image
-        let mut composite = ImageBuffer::from_pixel(total_width, max_height, Rgba([0, 0, 0, 255]));
-
-        let mut x_offset = 0u32;
+        let mut geoms: Vec<MonitorGeom> = Vec::with_capacity(monitors.len());
         for monitor in monitors {
-            let screenshot = monitor.capture_image()?;
-            // screenshot is already an ImageBuffer<Rgba<u8>, Vec<u8>>
-            image::imageops::overlay(&mut composite, &screenshot, x_offset as i64, 0);
-            x_offset += screenshot.width();
+            geoms.push(MonitorGeom {
+                x: monitor.x()?,
+                y: monitor.y()?,
+                width: monitor.width()?,
+                height: monitor.height()?,
+                image: monitor.capture_image()?,
+            });
+        }
+
+        // Compute bounding box across all monitor positions.
+        let min_x = geoms.iter().map(|g| g.x).min().unwrap();
+        let min_y = geoms.iter().map(|g| g.y).min().unwrap();
+        let max_x = geoms.iter().map(|g| g.x + g.width as i32).max().unwrap();
+        let max_y = geoms.iter().map(|g| g.y + g.height as i32).max().unwrap();
+
+        let canvas_w = (max_x - min_x) as u32;
+        let canvas_h = (max_y - min_y) as u32;
+
+        let mut composite = ImageBuffer::from_pixel(canvas_w, canvas_h, Rgba([0, 0, 0, 255]));
+
+        for geom in geoms {
+            let offset_x = (geom.x - min_x) as i64;
+            let offset_y = (geom.y - min_y) as i64;
+            image::imageops::overlay(&mut composite, &geom.image, offset_x, offset_y);
         }
 
         Ok(DynamicImage::ImageRgba8(composite))

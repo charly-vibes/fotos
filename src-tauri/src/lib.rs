@@ -25,6 +25,7 @@ pub fn run() {
             commands::ai::auto_blur_pii,
             commands::ai::analyze_llm,
             commands::files::save_image,
+            commands::files::composite_image,
             commands::files::copy_to_clipboard,
             commands::files::export_annotations,
             commands::settings::get_settings,

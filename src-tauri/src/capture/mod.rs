@@ -48,20 +48,73 @@ impl ImageStore {
     }
 
     pub fn insert(&self, id: Uuid, image: Arc<image::DynamicImage>) {
-        self.images.write().unwrap().insert(id, image);
+        self.images
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, image);
     }
 
     pub fn get(&self, id: &Uuid) -> Option<Arc<image::DynamicImage>> {
-        self.images.read().unwrap().get(id).cloned()
+        self.images
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(id)
+            .cloned()
     }
 
     pub fn remove(&self, id: &Uuid) -> Option<Arc<image::DynamicImage>> {
-        self.images.write().unwrap().remove(id)
+        self.images
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(id)
     }
 }
 
 impl Default for ImageStore {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::{DynamicImage, RgbaImage};
+
+    fn dummy_image() -> Arc<DynamicImage> {
+        Arc::new(DynamicImage::ImageRgba8(RgbaImage::new(10, 10)))
+    }
+
+    #[test]
+    fn image_store_insert_and_get() {
+        let store = ImageStore::new();
+        let id = Uuid::new_v4();
+        let img = dummy_image();
+        store.insert(id, img.clone());
+        assert!(store.get(&id).is_some());
+    }
+
+    #[test]
+    fn image_store_get_missing_returns_none() {
+        let store = ImageStore::new();
+        assert!(store.get(&Uuid::new_v4()).is_none());
+    }
+
+    #[test]
+    fn image_store_remove_clears_entry() {
+        let store = ImageStore::new();
+        let id = Uuid::new_v4();
+        store.insert(id, dummy_image());
+        assert!(store.remove(&id).is_some());
+        assert!(store.get(&id).is_none());
+    }
+
+    #[test]
+    fn image_store_get_after_remove_is_none() {
+        let store = ImageStore::new();
+        let id = Uuid::new_v4();
+        store.insert(id, dummy_image());
+        store.remove(&id);
+        assert!(store.get(&id).is_none());
     }
 }
