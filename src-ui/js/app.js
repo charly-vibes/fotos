@@ -11,8 +11,6 @@ import { initAiPanel } from './ui/ai-panel.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, copyToClipboard } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
-const { listen } = window.__TAURI__.event;
-
 let messageTimeout = null;
 
 function setStatusMessage(message, autoClear = true) {
@@ -69,6 +67,13 @@ function getAnnotationBBox(ann) {
 }
 
 async function init() {
+  if (!window.__TAURI__) {
+    document.body.innerHTML = '<pre style="color:red;padding:20px;font-size:14px">Fotos failed to start: window.__TAURI__ is not defined.\nThe Tauri IPC bridge was not injected — this usually means the app was\nbuilt incorrectly or the frontend is being served outside the Tauri context.</pre>';
+    return;
+  }
+
+  const { listen } = window.__TAURI__.event;
+
   // Wire custom titlebar controls
   const appWindow = window.__TAURI__.window.getCurrentWindow();
   document.getElementById('btn-minimize').onclick = () => appWindow.minimize();
@@ -807,4 +812,8 @@ function buildCommittedShape(tool, startImg, endImg, r) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  init().catch(err => {
+    document.body.innerHTML = `<pre style="color:red;padding:20px;font-size:14px">Fotos init error:\n${err?.stack ?? err}</pre>`;
+  });
+});
