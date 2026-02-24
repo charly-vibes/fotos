@@ -5,16 +5,20 @@
 set -euo pipefail
 
 # Flatpak reads from the committed git state of the source branch.
-# Warn loudly if there are uncommitted changes so they don't get silently excluded.
-if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+# Abort if source files have uncommitted changes that would be silently excluded.
+# Only checks directories that end up in the Flatpak build; ignores project
+# tracking tools (.beads, .wai, .claude, etc.) and untracked files.
+SOURCE_DIRS="src-tauri src-ui src-mcp flatpak"
+DIRTY=$(git diff HEAD -- $SOURCE_DIRS 2>/dev/null; git diff --cached -- $SOURCE_DIRS 2>/dev/null)
+if [ -n "$DIRTY" ]; then
     echo ""
-    echo "ERROR: You have uncommitted changes."
+    echo "ERROR: Uncommitted changes in source files."
     echo "The Flatpak manifest sources from the committed git state (branch: main),"
-    echo "so any unstaged or staged-but-not-committed changes will NOT be included."
+    echo "so these changes will NOT be included in the build."
     echo ""
     echo "Commit your changes first, then re-run this script."
     echo ""
-    git status --short
+    git status --short -- $SOURCE_DIRS
     echo ""
     exit 1
 fi
