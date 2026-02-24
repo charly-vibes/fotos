@@ -1,9 +1,10 @@
 app-id: io.github.charly.fotos
 runtime: org.gnome.Platform
-runtime-version: '47'
+runtime-version: '48'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.llvm19
 command: fotos
 
 finish-args:
@@ -20,12 +21,21 @@ finish-args:
   - --talk-name=org.freedesktop.secrets
 
 modules:
+  - name: leptonica
+    buildsystem: cmake-ninja
+    builddir: true
+    sources:
+      - type: archive
+        url: https://github.com/DanBloomberg/leptonica/archive/1.85.0.tar.gz
+        sha256: 'c01376bce0379d4ea4bc2ec5d5cbddaa49e2f06f88242619ab8c059e21adf233'
+
   - name: tesseract
     buildsystem: cmake-ninja
+    builddir: true
     sources:
       - type: archive
         url: https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz
-        sha256: '' # TODO: fill in hash
+        sha256: 'a7a3f2a7420cb6a6a94d80c24163e183cf1d2f1bed2df3bbc397c81808a57237'
 
   - name: tessdata-eng
     buildsystem: simple
@@ -34,11 +44,32 @@ modules:
     sources:
       - type: file
         url: https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata
-        sha256: '' # TODO: fill in hash
+        sha256: '7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2'
 
   - name: fotos
     buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm19/bin
+      env:
+        CARGO_HOME: /run/build/fotos/cargo-home
+        LIBCLANG_PATH: /usr/lib/sdk/llvm19/lib
+        PKG_CONFIG_PATH: /app/lib/pkgconfig
+        TESSERACT_INCLUDE_PATH: /app/include
+        TESSERACT_LIB_PATH: /app/lib
+    sources:
+      - type: git
+        path: ..
+        branch: main
+      - cargo-sources.json
     build-commands:
-      - cargo build --release
+      - mkdir -p .cargo
+      - |
+        cat > .cargo/config.toml <<'EOF'
+        [source.crates-io]
+        replace-with = "vendored-sources"
+        [source.vendored-sources]
+        directory = "cargo/vendor"
+        EOF
+      - cargo build --release --offline
       - install -Dm755 target/release/fotos /app/bin/fotos
       - install -Dm755 target/release/fotos-mcp /app/bin/fotos-mcp

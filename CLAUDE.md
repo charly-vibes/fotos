@@ -123,10 +123,18 @@ just lint           # clippy lints
 just fmt            # rustfmt
 just test           # cargo test
 just spec-validate  # validate all OpenSpec specs
-just setup-distrobox # one-time: create distrobox + install deps
+just setup-distrobox  # one-time: create distrobox + install deps
+just setup-flatpak    # one-time: install Flatpak runtimes for `just install`
+just gen-cargo-sources # regenerate flatpak/cargo-sources.json after dependency changes
 ```
 
 If the fedora distrobox doesn't exist yet, run `just setup-distrobox` first.
+
+**Flatpak setup (one-time):**
+1. `just setup-flatpak` — installs GNOME SDK 48 and Rust extension runtimes from Flathub
+2. `just gen-cargo-sources` — generates `flatpak/cargo-sources.json` from `Cargo.lock` so the Flatpak build can fetch crates offline
+
+Run `just gen-cargo-sources` again whenever `Cargo.lock` changes (i.e. after adding/updating dependencies).
 
 ## Architecture
 

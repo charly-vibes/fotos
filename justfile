@@ -162,6 +162,49 @@ setup-distrobox:
     distrobox enter {{box}} -- cargo install tauri-cli
     echo "Done. Run 'just check' to verify."
 
+# Regenerate flatpak/cargo-sources.json from Cargo.lock (run after any dependency change)
+gen-cargo-sources:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SCRIPT=/tmp/flatpak-cargo-generator.py
+    VENV=/tmp/flatpak-venv
+    if [ ! -f "$SCRIPT" ]; then
+        curl -sL https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py -o "$SCRIPT"
+    fi
+    if [ ! -d "$VENV" ]; then
+        python3 -m venv "$VENV"
+        "$VENV/bin/pip" install -q aiohttp toml tomlkit attrs
+    fi
+    "$VENV/bin/python3" "$SCRIPT" Cargo.lock -o flatpak/cargo-sources.json
+    echo "Updated flatpak/cargo-sources.json"
+
+# Install Flatpak runtimes required for `just install` (GNOME SDK 48, Rust + LLVM extensions)
+setup-flatpak:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    GNOME_VER=48
+    FDO_VER=24.08
+    # Determine install scope: prefer user if flathub is configured there, else system
+    if flatpak remotes --user 2>/dev/null | grep -q flathub; then
+        SCOPE="--user"
+    else
+        SCOPE="--system"
+    fi
+    need_install=()
+    flatpak info $SCOPE org.gnome.Platform//$GNOME_VER &>/dev/null || need_install+=("org.gnome.Platform//$GNOME_VER")
+    flatpak info $SCOPE org.gnome.Sdk//$GNOME_VER &>/dev/null       || need_install+=("org.gnome.Sdk//$GNOME_VER")
+    flatpak info $SCOPE org.freedesktop.Sdk.Extension.rust-stable//$FDO_VER &>/dev/null \
+        || need_install+=("org.freedesktop.Sdk.Extension.rust-stable//$FDO_VER")
+    flatpak info $SCOPE org.freedesktop.Sdk.Extension.llvm19//$FDO_VER &>/dev/null \
+        || need_install+=("org.freedesktop.Sdk.Extension.llvm19//$FDO_VER")
+    if [ ${#need_install[@]} -eq 0 ]; then
+        echo "All Flatpak runtimes already installed."
+    else
+        echo "Installing missing Flatpak runtimes ($SCOPE): ${need_install[*]}"
+        flatpak install $SCOPE --noninteractive flathub "${need_install[@]}"
+        echo "Done."
+    fi
+
 # Install the Tauri CLI
 install-tauri-cli:
     cargo install tauri-cli

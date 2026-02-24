@@ -31,7 +31,7 @@ imageproc = "0.25"
 ab_glyph = "0.2"
 
 # AI / OCR
-tesseract-rs = "0.1"
+tesseract = "0.14"
 regex = "1"
 
 # LLM API clients

@@ -1,6 +1,6 @@
 use crate::capture::ImageStore;
 use serde::Serialize;
-use tesseract_rs::TesseractAPI;
+use tesseract::Tesseract;
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -55,30 +55,19 @@ pub fn run_ocr(
     let height = rgb_image.height();
     let raw_data = rgb_image.into_raw();
 
-    // Initialize Tesseract
     let lang_str = lang.unwrap_or_else(|| "eng".to_string());
-    let api = TesseractAPI::new();
-
-    // Initialize with default tessdata directory (empty string = use system default)
-    // On Linux, this is typically /usr/share/tessdata or /usr/share/tesseract-ocr/*/tessdata
-    api.init("", &lang_str).map_err(|e| {
-        format!(
-            "Failed to initialize Tesseract with language '{}': {}",
-            lang_str, e
-        )
-    })?;
 
     // Convert u32 dimensions to i32 for Tesseract API
     let width_i32 = width as i32;
     let height_i32 = height as i32;
     let bytes_per_line = (width * 3) as i32;
 
-    api.set_image(&raw_data, width_i32, height_i32, 3, bytes_per_line)
-        .map_err(|e| format!("Failed to set image: {}", e))?;
-
-    // Run OCR
-    let text = api
-        .get_utf8_text()
+    // Run OCR using system tesseract (datapath None = use TESSDATA_PREFIX env or system default)
+    let text = Tesseract::new(None, Some(&lang_str))
+        .map_err(|e| format!("Failed to initialize Tesseract with language '{}': {}", lang_str, e))?
+        .set_frame(&raw_data, width_i32, height_i32, 3, bytes_per_line)
+        .map_err(|e| format!("Failed to set image: {}", e))?
+        .get_text()
         .map_err(|e| format!("OCR failed: {}", e))?;
 
     // For tracer-bullet: return empty regions vec (skip per-word bounding boxes)
