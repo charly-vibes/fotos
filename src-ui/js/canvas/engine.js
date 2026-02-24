@@ -151,6 +151,7 @@ export class CanvasEngine {
 
   renderBase() {
     const ctx = this.#baseCtx;
+    ctx.resetTransform();
     ctx.clearRect(0, 0, this.#baseCanvas.width, this.#baseCanvas.height);
 
     if (!this.#image) {
@@ -184,6 +185,7 @@ export class CanvasEngine {
 
   #renderAnnotationsInternal() {
     const ctx = this.#annoCtx;
+    ctx.resetTransform();
     ctx.clearRect(0, 0, this.#annoCanvas.width, this.#annoCanvas.height);
     if (!this.#annotations.length && !this.#selectedAnnotation) return;
 
@@ -198,6 +200,7 @@ export class CanvasEngine {
 
   renderActive(previewShape) {
     const ctx = this.#activeCtx;
+    ctx.resetTransform();
     ctx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
     if (previewShape) {
       this.#applyTransform(ctx);
