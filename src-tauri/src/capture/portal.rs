@@ -8,13 +8,12 @@ pub async fn capture_via_portal() -> Result<image::DynamicImage> {
     use ashpd::desktop::screenshot::Screenshot;
 
     let response = Screenshot::request()
-        .interactive(true)
-        .modal(true)
+        .interactive(false)
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("Portal unavailable: {e}"))?
         .response()
-        .map_err(|e| anyhow::anyhow!("Portal unavailable: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("Screenshot portal request failed: {e}"))?;
 
     let uri = response.uri();
 
