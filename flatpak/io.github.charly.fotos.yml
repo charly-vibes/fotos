@@ -32,10 +32,10 @@ modules:
     buildsystem: autotools
     build-options:
       env:
-        HAVE_VALGRIND: '0'
+        DBUSMENUTESTSVALGRIND_CFLAGS: ' '
+        DBUSMENUTESTSVALGRIND_LIBS: ' '
     config-opts:
       - --disable-static
-      - --disable-tests
       - --disable-gtk-doc
       - --disable-dumper
       - --disable-vala
