@@ -20,7 +20,13 @@ export async function listWindows() {
 }
 
 export async function cropImage(imageId, x, y, width, height) {
-  return invoke('crop_image', { imageId, x, y, width, height });
+  return invoke('crop_image', {
+    imageId,
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height),
+  });
 }
 
 export async function runOcr(imageId, lang = null) {
