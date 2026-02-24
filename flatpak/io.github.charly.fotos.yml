@@ -33,12 +33,11 @@ modules:
     build-options:
       env:
         HAVE_VALGRIND: '0'
-        DBUSMENUDUMPER_CFLAGS: '-I/usr/include'
-        DBUSMENUDUMPER_LIBS: ''
     config-opts:
       - --disable-static
       - --disable-tests
       - --disable-gtk-doc
+      - --disable-dumper
       - --enable-introspection=no
       - --with-gtk=3
     sources:
