@@ -45,20 +45,30 @@ pub async fn take_screenshot(
     app: tauri::AppHandle,
 ) -> Result<ScreenshotResponse, String> {
     let _ = monitor;
+    tracing::info!("take_screenshot: mode={mode}");
 
     let image = match mode.as_str() {
         "fullscreen" => {
             // Inside a Flatpak sandbox, direct capture APIs are blocked.
             // Route through the XDG Desktop Portal instead.
             let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
+            tracing::info!("take_screenshot: in_flatpak={in_flatpak}");
             if in_flatpak {
+                tracing::info!("take_screenshot: routing to portal backend");
                 crate::capture::portal::capture_via_portal()
                     .await
-                    .map_err(|e| format!("Portal capture failed: {}", e))?
+                    .map_err(|e| {
+                        tracing::error!("take_screenshot: portal failed: {e}");
+                        format!("Portal capture failed: {}", e)
+                    })?
             } else {
+                tracing::info!("take_screenshot: routing to xcap backend");
                 crate::capture::xcap_backend::capture_fullscreen()
                     .await
-                    .map_err(|e| format!("Capture failed: {}", e))?
+                    .map_err(|e| {
+                        tracing::error!("take_screenshot: xcap failed: {e}");
+                        format!("Capture failed: {}", e)
+                    })?
             }
         }
         "region" => {
@@ -73,6 +83,7 @@ pub async fn take_screenshot(
             ));
         }
     };
+    tracing::info!("take_screenshot: image captured ({}x{})", image.width(), image.height());
 
     let image = Arc::new(image);
     let width = image.width();

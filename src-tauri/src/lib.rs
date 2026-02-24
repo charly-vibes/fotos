@@ -14,6 +14,13 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use uuid::Uuid;
 
+fn init_logging() {
+    use tracing_subscriber::{EnvFilter, fmt};
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+    fmt().with_env_filter(filter).with_writer(std::io::stderr).init();
+}
+
 async fn do_capture_and_emit(
     app: &tauri::AppHandle,
     event_name: &'static str,
@@ -24,25 +31,39 @@ async fn do_capture_and_emit(
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
+        tracing::debug!("do_capture_and_emit: capture already in flight, ignoring");
         return;
     }
+
+    tracing::info!("do_capture_and_emit: starting capture for event '{event_name}'");
 
     let window = match app.get_webview_window("main") {
         Some(w) => w,
         None => {
+            tracing::error!("do_capture_and_emit: main window not found");
             is_capturing.store(false, Ordering::SeqCst);
             return;
         }
     };
 
+    let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
+    tracing::info!("do_capture_and_emit: in_flatpak={in_flatpak}");
+
+    // In Flatpak the portal captures the screen including our window, so hide
+    // first regardless of backend so the app doesn't appear in the shot.
     let _ = window.hide();
     // On X11 ~150ms is enough; on Wayland the compositor needs a full frame.
-    // 300ms is conservative but reliable on both. Future: use portal.rs on Wayland.
     tokio::time::sleep(std::time::Duration::from_millis(300)).await;
 
     let image_store = app.state::<capture::ImageStore>();
     let result: Result<commands::capture::ScreenshotResponse, String> = async {
-        let image = capture::xcap_backend::capture_fullscreen().await.map_err(|e| e.to_string())?;
+        let image = if in_flatpak {
+            tracing::info!("do_capture_and_emit: using portal backend");
+            capture::portal::capture_via_portal().await.map_err(|e| e.to_string())?
+        } else {
+            tracing::info!("do_capture_and_emit: using xcap backend");
+            capture::xcap_backend::capture_fullscreen().await.map_err(|e| e.to_string())?
+        };
         let image = Arc::new(image);
         let id = Uuid::new_v4();
         image_store.insert(id, Arc::clone(&image));
@@ -64,16 +85,21 @@ async fn do_capture_and_emit(
     is_capturing.store(false, Ordering::SeqCst);
 
     match result {
-        Ok(payload) => {
+        Ok(ref payload) => {
+            tracing::info!("do_capture_and_emit: captured {}x{}, emitting '{event_name}'", payload.width, payload.height);
             let _ = app.emit(event_name, payload);
         }
-        Err(e) => {
+        Err(ref e) => {
+            tracing::error!("do_capture_and_emit: capture failed: {e}");
             let _ = app.emit(event_name, serde_json::json!({ "error": e }));
         }
     }
 }
 
 pub fn run() {
+    init_logging();
+    tracing::info!("Fotos starting (FLATPAK_ID={:?})", std::env::var("FLATPAK_ID").ok());
+
     let image_store = capture::ImageStore::new();
 
     tauri::Builder::default()
