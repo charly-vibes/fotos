@@ -72,6 +72,7 @@ modules:
         [source.vendored-sources]
         directory = "cargo/vendor"
         EOF
+      - touch src-tauri/fotos-mcp-x86_64-unknown-linux-gnu
       - cargo build --release --offline
       - install -Dm755 target/release/fotos /app/bin/fotos
       - install -Dm755 target/release/fotos-mcp /app/bin/fotos-mcp
