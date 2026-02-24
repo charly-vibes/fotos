@@ -47,9 +47,20 @@ pub async fn take_screenshot(
     let _ = monitor;
 
     let image = match mode.as_str() {
-        "fullscreen" => crate::capture::xcap_backend::capture_fullscreen()
-            .await
-            .map_err(|e| format!("Capture failed: {}", e))?,
+        "fullscreen" => {
+            // Inside a Flatpak sandbox, direct capture APIs are blocked.
+            // Route through the XDG Desktop Portal instead.
+            let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
+            if in_flatpak {
+                crate::capture::portal::capture_via_portal()
+                    .await
+                    .map_err(|e| format!("Portal capture failed: {}", e))?
+            } else {
+                crate::capture::xcap_backend::capture_fullscreen()
+                    .await
+                    .map_err(|e| format!("Capture failed: {}", e))?
+            }
+        }
         "region" => {
             return Err(
                 "Region capture is handled in-app; use fullscreen + crop_image".into(),
