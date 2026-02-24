@@ -13,10 +13,20 @@ just lint           # clippy lints
 just fmt            # rustfmt
 just test           # cargo test
 just spec-validate  # validate all OpenSpec specs
-just setup-distrobox # one-time: create distrobox + install deps
+just setup-distrobox  # one-time: create distrobox + install deps
+just setup-flatpak    # one-time: install Flatpak SDK runtimes
+just package          # build Flatpak
+just install          # build + install Flatpak locally
+just gen-cargo-sources # regenerate flatpak/cargo-sources.json after dependency changes
 ```
 
 If the fedora distrobox doesn't exist yet, run `just setup-distrobox` first.
+
+**Flatpak setup (one-time):**
+1. `just setup-flatpak` — installs GNOME SDK 48 and Rust extension runtimes from Flathub
+2. `just gen-cargo-sources` — generates `flatpak/cargo-sources.json` from `Cargo.lock` so the Flatpak build can fetch crates offline
+
+Run `just gen-cargo-sources` again whenever `Cargo.lock` changes (i.e. after adding/updating dependencies).
 
 ## Architecture
 
@@ -145,26 +155,26 @@ Keep this managed block so `wai init` can refresh the instructions.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, complete ALL steps below.
+
+**Note:** This project uses ephemeral branches — code is merged to `main` locally, not pushed to a remote. The beads issue tracker lives in the repo and is synced via `bd sync --from-main`.
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+1. **File issues for remaining work** — create beads issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) — `just check`, `just lint`, `just test`
+3. **Update issue status** — close finished work (`bd close <id>`), update in-progress items
+4. **Commit and sync:**
    ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
+   git status                  # review what changed
+   git add <files>             # stage code changes
+   bd sync --from-main         # pull beads updates from main
+   git commit -m "..."         # commit code + beads state together
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+5. **Create a handoff** — `wai handoff create tracer-bullet` so the next session has context
+6. **Verify** — `git status` shows a clean working tree
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- NEVER say "done" before committing your changes
+- Do NOT use `git push` — this repo has no upstream remote; merges happen locally
+- Run `bd sync --from-main` before committing to avoid beads conflicts

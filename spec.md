@@ -1,3 +1,8 @@
+> **Archived planning document.** This spec was written during the initial design phase
+> under the working name "SnapLens". The project is now called **Fotos**
+> (`io.github.charly.fotos`). The authoritative requirements live in
+> `openspec/specs/` (9 capability specs). This file is kept for historical reference only.
+
 # SnapLens — AI-Powered Screenshot & Annotation Tool
 
 ## Project Specification v1.0
