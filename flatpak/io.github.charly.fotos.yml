@@ -24,6 +24,8 @@ modules:
   - name: leptonica
     buildsystem: cmake-ninja
     builddir: true
+    post-install:
+      - ln -sf lept_Release.pc /app/lib/pkgconfig/lept.pc
     sources:
       - type: archive
         url: https://github.com/DanBloomberg/leptonica/archive/1.85.0.tar.gz
