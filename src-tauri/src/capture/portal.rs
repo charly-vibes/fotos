@@ -7,10 +7,13 @@ use anyhow::{bail, Context, Result};
 pub async fn capture_via_portal() -> Result<image::DynamicImage> {
     use ashpd::desktop::screenshot::Screenshot;
 
-    tracing::info!("portal: sending screenshot request (interactive=false)");
+    // Use interactive=true so GNOME shows a confirmation dialog on first use,
+    // which also grants the screenshot permission. Without this, GNOME's portal
+    // returns "Other" (error code 2) immediately if no permission has been stored.
+    tracing::info!("portal: sending screenshot request (interactive=true)");
 
     let request = Screenshot::request()
-        .interactive(false)
+        .interactive(true)
         .send()
         .await
         .map_err(|e| {
@@ -18,7 +21,7 @@ pub async fn capture_via_portal() -> Result<image::DynamicImage> {
             anyhow::anyhow!("Portal unavailable: {e}")
         })?;
 
-    tracing::info!("portal: request sent, awaiting response");
+    tracing::info!("portal: request sent, awaiting user confirmation");
 
     let response = request
         .response()
