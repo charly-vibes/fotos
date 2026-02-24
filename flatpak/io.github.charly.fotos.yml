@@ -26,6 +26,7 @@ modules:
     builddir: true
     config-opts:
       - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      - -DBUILD_SHARED_LIBS=ON
     post-install:
       - ln -sf lept_Release.pc /app/lib/pkgconfig/lept.pc
     sources:
@@ -38,6 +39,7 @@ modules:
     builddir: true
     config-opts:
       - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      - -DBUILD_SHARED_LIBS=ON
     sources:
       - type: archive
         url: https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz
