@@ -211,22 +211,28 @@ async function init() {
     setStatusMessage('Redone');
   }
 
+  // Accepts a pre-captured { id, data_url } object and shows the region picker.
+  async function startRegionPickerWithCapture(result) {
+    const resp = await fetch(result.data_url);
+    const blob = await resp.blob();
+    const bitmap = await createImageBitmap(blob);
+    regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
+      try {
+        const cropped = await cropImage(result.id, ix, iy, iw, ih);
+        await loadImageAndUpdate(cropped.data_url, cropped.id);
+        store.set('annotations', []);
+        setStatusMessage('Region captured');
+      } catch (err) {
+        setStatusMessage(`Crop failed: ${err}`, false);
+      }
+    }, () => { setStatusMessage('Region capture cancelled', false); });
+  }
+
+  // Existing flow (called by button + local shortcut): capture then show picker.
   async function doCaptureRegion() {
     try {
       const result = await takeScreenshot('fullscreen');
-      const resp = await fetch(result.data_url);
-      const blob = await resp.blob();
-      const bitmap = await createImageBitmap(blob);
-      regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
-        try {
-          const cropped = await cropImage(result.id, ix, iy, iw, ih);
-          await loadImageAndUpdate(cropped.data_url, cropped.id);
-          store.set('annotations', []);
-          setStatusMessage('Region captured');
-        } catch (err) {
-          setStatusMessage(`Crop failed: ${err}`, false);
-        }
-      }, () => { setStatusMessage('Region capture cancelled', false); });
+      await startRegionPickerWithCapture(result);
     } catch (error) {
       setStatusMessage(`Capture failed: ${error}`, false);
     }
@@ -714,6 +720,25 @@ async function init() {
   // Listen for screenshot-ready events (for future async portal flow).
   await listen('screenshot-ready', (event) => {
     console.log('Screenshot ready event:', event.payload);
+  });
+
+  // Global shortcut: Ctrl+Shift+S — Rust hid window, captured, now show region picker.
+  await listen('global-capture-region', async (event) => {
+    const payload = event.payload;
+    if (payload.error) { setStatusMessage(`Capture failed: ${payload.error}`, false); return; }
+    try { await startRegionPickerWithCapture(payload); }
+    catch (err) { setStatusMessage(`Region picker failed: ${err}`, false); }
+  });
+
+  // Global shortcut: Ctrl+Shift+A — Rust hid window, captured, load directly.
+  await listen('global-capture-fullscreen', async (event) => {
+    const payload = event.payload;
+    if (payload.error) { setStatusMessage(`Capture failed: ${payload.error}`, false); return; }
+    try {
+      await loadImageAndUpdate(payload.data_url, payload.id);
+      store.set('annotations', []);
+      setStatusMessage('Screenshot captured');
+    } catch (err) { setStatusMessage(`Load failed: ${err}`, false); }
   });
 
   console.log('Fotos initialized');

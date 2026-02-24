@@ -16,6 +16,7 @@ finish-args:
   - --filesystem=xdg-pictures:create
   - --talk-name=org.freedesktop.portal.Desktop
   - --talk-name=org.freedesktop.portal.Screenshot
+  - --talk-name=org.freedesktop.portal.GlobalShortcuts
   - --talk-name=org.freedesktop.secrets
 
 modules:

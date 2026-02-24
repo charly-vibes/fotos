@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tauri::Emitter;
 use uuid::Uuid;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ScreenshotResponse {
     pub id: String,
     pub width: u32,
