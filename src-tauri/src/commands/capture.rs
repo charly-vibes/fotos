@@ -43,24 +43,29 @@ pub async fn take_screenshot(
     monitor: Option<u32>,
     store: tauri::State<'_, ImageStore>,
     app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
 ) -> Result<ScreenshotResponse, String> {
     let _ = monitor;
     tracing::info!("take_screenshot: mode={mode}");
 
     let image = match mode.as_str() {
         "fullscreen" => {
-            // Inside a Flatpak sandbox, direct capture APIs are blocked.
-            // Route through the XDG Desktop Portal instead.
+            // Hide the app window so it doesn't appear in the screenshot.
+            tracing::info!("take_screenshot: hiding window");
+            let _ = window.hide();
+            // Give the compositor a moment to actually hide the window.
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
             let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
             tracing::info!("take_screenshot: in_flatpak={in_flatpak}");
-            if in_flatpak {
+            let result = if in_flatpak {
                 tracing::info!("take_screenshot: routing to portal backend");
                 crate::capture::portal::capture_via_portal()
                     .await
                     .map_err(|e| {
                         tracing::error!("take_screenshot: portal failed: {e}");
                         format!("Portal capture failed: {}", e)
-                    })?
+                    })
             } else {
                 tracing::info!("take_screenshot: routing to xcap backend");
                 crate::capture::xcap_backend::capture_fullscreen()
@@ -68,8 +73,15 @@ pub async fn take_screenshot(
                     .map_err(|e| {
                         tracing::error!("take_screenshot: xcap failed: {e}");
                         format!("Capture failed: {}", e)
-                    })?
-            }
+                    })
+            };
+
+            // Always restore the window before returning.
+            tracing::info!("take_screenshot: restoring window");
+            let _ = window.show();
+            let _ = window.set_focus();
+
+            result?
         }
         "region" => {
             return Err(
