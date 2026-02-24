@@ -55,6 +55,18 @@ modules:
         url: https://github.com/AyatanaIndicators/ayatana-ido/archive/0.10.1.tar.gz
         sha256: '26187915a6f3402195e2c78d9e8a54549112a3cd05bb2fbe2059d3e78fc0e071'
 
+  - name: libayatana-indicator
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DENABLE_BINDINGS_MONO=NO
+      - -DENABLE_BINDINGS_VALA=NO
+      - -DENABLE_BINDINGS_PYTHON=NO
+    sources:
+      - type: archive
+        url: https://github.com/AyatanaIndicators/libayatana-indicator/archive/0.9.4.tar.gz
+        sha256: 'a18d3c682e29afd77db24366f8475b26bda22b0e16ff569a2ec71cd6eb4eac95'
+
   - name: libayatana-appindicator
     buildsystem: cmake-ninja
     builddir: true
