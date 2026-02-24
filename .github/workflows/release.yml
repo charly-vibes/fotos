@@ -32,8 +32,11 @@ jobs:
       - name: Install tauri-cli
         run: cargo install tauri-cli --locked
 
-      - name: Build
-        run: cargo tauri build
+      - name: Install just
+        run: cargo install just --locked
+
+      - name: Build package
+        run: just package deb
 
       - name: Upload .deb
         uses: actions/upload-artifact@v4
@@ -69,15 +72,14 @@ jobs:
         env:
           VCPKG_ROOT: C:\vcpkg
 
-      - name: Create sidecar placeholder
-        shell: bash
-        run: touch "src-tauri/fotos-mcp-$(rustc -vV | grep host | cut -d' ' -f2).exe"
-
       - name: Install tauri-cli
         run: cargo install tauri-cli --locked
 
-      - name: Build
-        run: cargo tauri build --bundles msi nsis
+      - name: Install just
+        run: cargo install just --locked
+
+      - name: Build package
+        run: just package msi
         env:
           VCPKG_ROOT: C:\vcpkg
           TESSERACT_PREFIX: C:\vcpkg\installed\x64-windows-static-md

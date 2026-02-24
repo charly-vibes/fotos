@@ -12,8 +12,14 @@ default:
 [private]
 ensure-sidecar:
     #!/usr/bin/env bash
-    triple=$(distrobox enter {{box}} -- rustc -vV | grep '^host:' | cut -d' ' -f2)
-    touch "src-tauri/fotos-mcp-${triple}"
+    if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q "{{box}}"; then
+        triple=$(distrobox enter {{box}} -- rustc -vV | grep '^host:' | cut -d' ' -f2)
+    else
+        triple=$(rustc -vV | grep '^host:' | cut -d' ' -f2)
+    fi
+    ext=""
+    [[ "$triple" == *windows* ]] && ext=".exe"
+    touch "src-tauri/fotos-mcp-${triple}${ext}"
 
 # Helper: remove the sidecar placeholder
 [private]
@@ -39,6 +45,56 @@ dev: ensure-sidecar
 # Build a Flatpak package
 flatpak:
     ./scripts/build-flatpak.sh
+
+# Build a distributable package (format: flatpak [default], deb, appimage, msi, nsis)
+package format="flatpak": ensure-sidecar
+    #!/usr/bin/env bash
+    set -euo pipefail
+    _build() {
+        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q "{{box}}"; then
+            distrobox enter {{box}} -- "$@"
+        else
+            "$@"
+        fi
+    }
+    case "{{format}}" in
+        flatpak)
+            ./scripts/build-flatpak.sh
+            ;;
+        deb|appimage|msi|nsis)
+            _build cargo tauri build --bundles {{format}}
+            ;;
+        *)
+            echo "Unknown format '{{format}}'. Supported: flatpak, deb, appimage, msi, nsis" >&2
+            exit 1
+            ;;
+    esac
+    rm -f src-tauri/fotos-mcp-*-unknown-* src-tauri/fotos-mcp-*.exe 2>/dev/null || true
+
+# Build and install Fotos locally (format: flatpak [default], deb, appimage, msi, nsis)
+install format="flatpak": (package format)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{format}}" in
+        flatpak)
+            flatpak install --user --reinstall .flatpak-repo io.github.charly.fotos
+            ;;
+        deb)
+            sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
+            ;;
+        appimage)
+            mkdir -p ~/.local/bin
+            cp src-tauri/target/release/bundle/appimage/*.AppImage ~/.local/bin/fotos.AppImage
+            chmod +x ~/.local/bin/fotos.AppImage
+            echo "Installed: ~/.local/bin/fotos.AppImage"
+            ;;
+        msi)
+            msiexec /i "$(ls src-tauri/target/release/bundle/msi/*.msi | head -1)"
+            ;;
+        nsis)
+            "$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)" /S
+            ;;
+    esac
 
 # ── Quality ───────────────────────────────────────────
 
