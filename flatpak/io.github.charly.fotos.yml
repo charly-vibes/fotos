@@ -31,7 +31,7 @@ modules:
   - name: libdbusmenu
     buildsystem: autotools
     build-options:
-      cflags: -Wno-error=deprecated-declarations
+      cflags: -DGLIB_DISABLE_DEPRECATION_WARNINGS
       env:
         DBUSMENUTESTSVALGRIND_CFLAGS: ' '
         DBUSMENUTESTSVALGRIND_LIBS: ' '
