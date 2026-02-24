@@ -65,30 +65,36 @@ pub fn save_image(
         composite_annotation(&mut composite, anno);
     }
 
-    let save_path = if path.is_empty() {
-        generate_default_path()?
+    let (save_path, user_chosen) = if path.is_empty() {
+        (generate_default_path()?, false)
     } else {
-        expand_tilde(&path)?
+        (expand_tilde(&path)?, true)
     };
 
-    // Reject path traversal: ensure the resolved path stays within the user's home directory.
-    let home = UserDirs::new()
-        .map(|d| d.home_dir().to_path_buf())
-        .ok_or("Could not determine home directory for path validation")?;
+    // For auto-generated paths, guard against path traversal by requiring the path
+    // stays within the home directory.  User-chosen paths (from the save dialog) are
+    // already authorised by the OS portal/dialog, so we skip this check for them —
+    // the dialog may return portal-translated paths like /run/user/<uid>/doc/… which
+    // are outside the home directory but perfectly valid.
+    if !user_chosen {
+        let home = UserDirs::new()
+            .map(|d| d.home_dir().to_path_buf())
+            .ok_or("Could not determine home directory for path validation")?;
+
+        let canonical = save_path
+            .canonicalize()
+            .unwrap_or_else(|_| save_path.clone());
+        if !canonical.starts_with(&home) {
+            return Err(format!(
+                "Save path '{}' is outside the home directory",
+                save_path.display()
+            ));
+        }
+    }
 
     if let Some(parent) = save_path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-
-    let canonical = save_path
-        .canonicalize()
-        .unwrap_or_else(|_| save_path.clone());
-    if !canonical.starts_with(&home) {
-        return Err(format!(
-            "Save path '{}' is outside the home directory",
-            save_path.display()
-        ));
     }
 
     composite

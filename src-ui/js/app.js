@@ -207,8 +207,12 @@ async function init() {
         if (!store.get('currentImageId')) { setStatusMessage('No image loaded', false); return; }
         try {
           setStatusMessage('Copying to clipboard...', false);
-          const b64 = await compositeImage(store.get('currentImageId'), store.get('annotations') || []);
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': base64PngToBlob(b64) })]);
+          // Call clipboard.write() before any await so the user-activation token
+          // (from the click event) is still valid.  The image is resolved async
+          // inside the ClipboardItem Promise.
+          const imagePromise = compositeImage(store.get('currentImageId'), store.get('annotations') || [])
+            .then(base64PngToBlob);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePromise })]);
           setStatusMessage('');
           showToast('Copied to clipboard');
         } catch (error) {
