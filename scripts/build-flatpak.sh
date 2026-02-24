@@ -9,11 +9,10 @@ BUILD_DIR=".flatpak-build"
 REPO_DIR=".flatpak-repo"
 
 echo "Building Fotos Flatpak..."
-
-flatpak-builder --force-clean "$BUILD_DIR" "$MANIFEST"
-
-echo "Creating Flatpak repository..."
 flatpak-builder --repo="$REPO_DIR" --force-clean "$BUILD_DIR" "$MANIFEST"
 
+echo "Updating repository summary..."
+flatpak build-update-repo "$REPO_DIR"
+
 echo "Done. Install with:"
-echo "  flatpak install --user $REPO_DIR io.github.charly.fotos"
+echo "  flatpak install --user file://\$PWD/$REPO_DIR io.github.charly.fotos"

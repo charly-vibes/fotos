@@ -77,7 +77,8 @@ install format="flatpak": (package format)
     set -euo pipefail
     case "{{format}}" in
         flatpak)
-            flatpak install --user --reinstall .flatpak-repo io.github.charly.fotos
+            flatpak remote-add --user --no-gpg-verify --if-not-exists fotos-local "$(pwd)/.flatpak-repo"
+            flatpak install --user --reinstall fotos-local io.github.charly.fotos
             ;;
         deb)
             sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
