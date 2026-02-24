@@ -111,6 +111,8 @@ async function init() {
     const { width, height } = await engine.loadImage(dataUrl);
     store.set('currentImageId', imageId);
     document.getElementById('status-dimensions').textContent = `${width}×${height}`;
+    // Auto-fit the new image to the viewport.
+    updateZoomStatus(engine.fitToPage());
     return { width, height };
   }
 
@@ -188,6 +190,30 @@ async function init() {
         } catch (error) {
           setStatusMessage(`Copy failed: ${error}`, false);
         }
+        break;
+
+      case 'zoom-fit':
+        updateZoomStatus(engine.fitToPage());
+        break;
+
+      case 'zoom-100': {
+        const cont = document.getElementById('canvas-container');
+        engine.setZoomAndPan(1.0,
+          (cont.clientWidth - engine.imageWidth) / 2,
+          (cont.clientHeight - engine.imageHeight) / 2,
+        );
+        updateZoomStatus(1.0);
+        break;
+      }
+
+      case 'zoom-in':
+        engine.setZoom(engine.getZoom() * 1.25);
+        updateZoomStatus(engine.getZoom());
+        break;
+
+      case 'zoom-out':
+        engine.setZoom(engine.getZoom() / 1.25);
+        updateZoomStatus(engine.getZoom());
         break;
 
       case 'capture-window':
@@ -349,11 +375,22 @@ async function init() {
       return;
     }
 
-    // Ctrl+0 — reset zoom and pan
+    // Ctrl+0 — fit to page
     if (e.ctrlKey && e.key === '0') {
       e.preventDefault();
-      engine.setZoom(1.0);
-      engine.setPan(0, 0);
+      updateZoomStatus(engine.fitToPage());
+      return;
+    }
+
+    // Ctrl+1 — 100% zoom, image centered
+    if (e.ctrlKey && e.key === '1') {
+      e.preventDefault();
+      const cw = document.getElementById('canvas-container').clientWidth;
+      const ch = document.getElementById('canvas-container').clientHeight;
+      engine.setZoomAndPan(1.0,
+        (cw - engine.imageWidth) / 2,
+        (ch - engine.imageHeight) / 2,
+      );
       updateZoomStatus(1.0);
       return;
     }
@@ -430,6 +467,7 @@ async function init() {
   });
 
   // Mouse wheel zoom — centered on cursor position.
+  // Use setZoomAndPan() to update both in one render call (avoids artifact traces).
   container.addEventListener('wheel', (e) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
@@ -438,8 +476,7 @@ async function init() {
     const pan = engine.getPan();
     const newPanX = e.offsetX - (e.offsetX - pan.x) * (newZoom / oldZoom);
     const newPanY = e.offsetY - (e.offsetY - pan.y) * (newZoom / oldZoom);
-    engine.setZoom(newZoom);
-    engine.setPan(newPanX, newPanY);
+    engine.setZoomAndPan(newZoom, newPanX, newPanY);
     updateZoomStatus(newZoom);
   }, { passive: false });
 

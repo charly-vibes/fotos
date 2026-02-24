@@ -111,6 +111,14 @@ export class CanvasEngine {
   getZoom() { return this.#zoom; }
   zoomBy(factor) { this.setZoom(this.#zoom * factor); }
 
+  // Set zoom and pan in one call — avoids the double render that causes artifacts.
+  setZoomAndPan(z, panX, panY) {
+    this.#zoom = Math.max(0.1, Math.min(10.0, z));
+    this.#panX = panX;
+    this.#panY = panY;
+    this.#renderAll();
+  }
+
   setPan(x, y) {
     this.#panX = x;
     this.#panY = y;
@@ -118,6 +126,24 @@ export class CanvasEngine {
   }
 
   getPan() { return { x: this.#panX, y: this.#panY }; }
+
+  // Scale image to fit the container, centered, with padding.  Returns the zoom level.
+  fitToPage() {
+    if (!this.#image) return this.#zoom;
+    const cw = this.#container.clientWidth;
+    const ch = this.#container.clientHeight;
+    const pad = 20;
+    const z = Math.min(
+      (cw - pad * 2) / this.#image.width,
+      (ch - pad * 2) / this.#image.height,
+      10.0,
+    );
+    this.#zoom = Math.max(0.05, z);
+    this.#panX = (cw - this.#image.width * this.#zoom) / 2;
+    this.#panY = (ch - this.#image.height * this.#zoom) / 2;
+    this.#renderAll();
+    return this.#zoom;
+  }
 
   get hasImage() { return this.#image !== null; }
   get imageWidth() { return this.#image?.width ?? 0; }
