@@ -82,8 +82,14 @@ export class CanvasEngine {
   // --- Public API ---
 
   async loadImage(dataUrl) {
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    // WebKitGTK does not support fetch() for data: URLs (throws "TypeError: Load failed").
+    // Decode the data URL directly into a Blob instead.
+    const [header, base64] = dataUrl.split(',', 2);
+    const mimeType = header.match(/:(.*?);/)[1];
+    const bytes = atob(base64);
+    const array = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i);
+    const blob = new Blob([array], { type: mimeType });
     this.#image = await createImageBitmap(blob);
     this.#renderAll();
     return { width: this.#image.width, height: this.#image.height };

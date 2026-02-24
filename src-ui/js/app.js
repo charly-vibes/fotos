@@ -218,8 +218,13 @@ async function init() {
 
   // Accepts a pre-captured { id, data_url } object and shows the region picker.
   async function startRegionPickerWithCapture(result) {
-    const resp = await fetch(result.data_url);
-    const blob = await resp.blob();
+    // WebKitGTK does not support fetch() for data: URLs; decode directly.
+    const [header, base64] = result.data_url.split(',', 2);
+    const mimeType = header.match(/:(.*?);/)[1];
+    const bytes = atob(base64);
+    const array = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i);
+    const blob = new Blob([array], { type: mimeType });
     const bitmap = await createImageBitmap(blob);
     regionPicker.show(bitmap, async (ix, iy, iw, ih) => {
       try {
