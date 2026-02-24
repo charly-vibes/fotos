@@ -209,6 +209,34 @@ body {
   pointer-events: none;
 }
 
+/* Toast notification */
+#toast {
+  position: fixed;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: var(--bg-toolbar);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 500;
+  white-space: nowrap;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#toast.success { border-color: #22c55e; }
+#toast.error   { border-color: #ef4444; }
+
 /* Status bar */
 #statusbar {
   grid-column: 1 / -1;

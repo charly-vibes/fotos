@@ -12,6 +12,7 @@ import { ping, takeScreenshot, cropImage, runOcr, saveImage, copyToClipboard } f
 import { RegionPicker } from './ui/region-picker.js';
 
 let messageTimeout = null;
+let toastTimeout = null;
 
 function setStatusMessage(message, autoClear = true) {
   const statusMsg = document.getElementById('status-message');
@@ -20,6 +21,17 @@ function setStatusMessage(message, autoClear = true) {
   if (autoClear) {
     messageTimeout = setTimeout(() => { statusMsg.textContent = ''; }, 4000);
   }
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toast.textContent = message;
+  toast.className = type;
+  // Force reflow so transition fires even if toast was already visible.
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2800);
 }
 
 function updateZoomStatus(zoom) {
@@ -186,9 +198,11 @@ async function init() {
         try {
           setStatusMessage('Copying to clipboard...', false);
           await copyToClipboard(store.get('currentImageId'), store.get('annotations') || []);
-          setStatusMessage('Copied to clipboard');
+          setStatusMessage('');
+          showToast('Copied to clipboard');
         } catch (error) {
-          setStatusMessage(`Copy failed: ${error}`, false);
+          setStatusMessage('');
+          showToast(`Copy failed: ${error}`, 'error');
         }
         break;
 
@@ -280,9 +294,11 @@ async function init() {
     try {
       setStatusMessage('Saving...', false);
       const savedPath = await saveImage(currentImageId, store.get('annotations'), 'png', '');
-      setStatusMessage(`Saved to ${savedPath}`);
+      setStatusMessage('');
+      showToast(`Saved to ${savedPath}`);
     } catch (error) {
-      setStatusMessage(`Save failed: ${error}`, false);
+      setStatusMessage('');
+      showToast(`Save failed: ${error}`, 'error');
     }
   }
 
