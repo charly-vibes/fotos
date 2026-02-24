@@ -62,8 +62,16 @@ pub fn run_ocr(
     let height_i32 = height as i32;
     let bytes_per_line = (width * 3) as i32;
 
-    // Run OCR using system tesseract (datapath None = use TESSDATA_PREFIX env or system default)
-    let text = Tesseract::new(None, Some(&lang_str))
+    // Determine tessdata path. Inside a Flatpak, traineddata files are installed
+    // at /app/share/tessdata/ — pass that explicitly. Outside Flatpak, pass None
+    // so Tesseract falls back to TESSDATA_PREFIX or its built-in search paths.
+    let tessdata_path: Option<&str> = if std::env::var("FLATPAK_ID").is_ok() {
+        Some("/app/share/tessdata")
+    } else {
+        None
+    };
+
+    let text = Tesseract::new(tessdata_path, Some(&lang_str))
         .map_err(|e| format!("Failed to initialize Tesseract with language '{}': {}", lang_str, e))?
         .set_frame(&raw_data, width_i32, height_i32, 3, bytes_per_line)
         .map_err(|e| format!("Failed to set image: {}", e))?
