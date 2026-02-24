@@ -39,8 +39,12 @@ export async function saveImage(imageId, annotations, format, path) {
   return invoke('save_image', { imageId, annotations, format, path });
 }
 
-export async function copyToClipboard(imageId, annotations) {
-  return invoke('copy_to_clipboard', { imageId, annotations });
+export async function compositeImage(imageId, annotations) {
+  return invoke('composite_image', { imageId, annotations });
+}
+
+export async function showSaveDialog(opts = {}) {
+  return window.__TAURI__.dialog.save(opts);
 }
 
 export async function exportAnnotations(imageId, annotations) {

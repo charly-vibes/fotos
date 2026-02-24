@@ -8,7 +8,7 @@ import { AddAnnotationCommand, CropCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { ping, takeScreenshot, cropImage, runOcr, saveImage, copyToClipboard } from './tauri-bridge.js';
+import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
 let messageTimeout = null;
@@ -32,6 +32,13 @@ function showToast(message, type = 'success') {
   void toast.offsetWidth;
   toast.classList.add('show');
   toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2800);
+}
+
+function base64PngToBlob(b64) {
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: 'image/png' });
 }
 
 function updateZoomStatus(zoom) {
@@ -185,8 +192,11 @@ async function init() {
       case 'undo': doUndo(); break;
       case 'redo': doRedo(); break;
       case 'save':
-      case 'save-as':
         await doSave();
+        break;
+
+      case 'save-as':
+        await doSaveAs();
         break;
 
       case 'capture-region':
@@ -197,7 +207,8 @@ async function init() {
         if (!store.get('currentImageId')) { setStatusMessage('No image loaded', false); return; }
         try {
           setStatusMessage('Copying to clipboard...', false);
-          await copyToClipboard(store.get('currentImageId'), store.get('annotations') || []);
+          const b64 = await compositeImage(store.get('currentImageId'), store.get('annotations') || []);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': base64PngToBlob(b64) })]);
           setStatusMessage('');
           showToast('Copied to clipboard');
         } catch (error) {
@@ -294,6 +305,25 @@ async function init() {
     try {
       setStatusMessage('Saving...', false);
       const savedPath = await saveImage(currentImageId, store.get('annotations'), 'png', '');
+      setStatusMessage('');
+      showToast(`Saved to ${savedPath}`);
+    } catch (error) {
+      setStatusMessage('');
+      showToast(`Save failed: ${error}`, 'error');
+    }
+  }
+
+  async function doSaveAs() {
+    const currentImageId = store.get('currentImageId');
+    if (!currentImageId) { setStatusMessage('No image to save', false); return; }
+    const path = await showSaveDialog({
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+      defaultPath: 'screenshot.png',
+    });
+    if (!path) return; // cancelled
+    try {
+      setStatusMessage('Saving...', false);
+      const savedPath = await saveImage(currentImageId, store.get('annotations'), 'png', path);
       setStatusMessage('');
       showToast(`Saved to ${savedPath}`);
     } catch (error) {
