@@ -21,6 +21,42 @@ finish-args:
   - --talk-name=org.freedesktop.secrets
 
 modules:
+  - name: libdbusmenu
+    buildsystem: autotools
+    build-options:
+      env:
+        HAVE_VALGRIND: '0'
+    config-opts:
+      - --disable-static
+      - --disable-tests
+      - --disable-gtk-doc
+      - --enable-introspection=no
+      - --with-gtk=3
+    sources:
+      - type: archive
+        url: https://launchpad.net/libdbusmenu/16.04/16.04.0/+download/libdbusmenu-16.04.0.tar.gz
+        sha256: 'b9cc4a2acd74509435892823607d966d424bd9ad5d0b00938f27240a1bfa878a'
+
+  - name: ayatana-ido
+    buildsystem: cmake-ninja
+    builddir: true
+    sources:
+      - type: archive
+        url: https://github.com/AyatanaIndicators/ayatana-ido/archive/0.10.1.tar.gz
+        sha256: '26187915a6f3402195e2c78d9e8a54549112a3cd05bb2fbe2059d3e78fc0e071'
+
+  - name: libayatana-appindicator
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DENABLE_BINDINGS_MONO=NO
+      - -DENABLE_BINDINGS_VALA=NO
+      - -DENABLE_BINDINGS_PYTHON=NO
+    sources:
+      - type: archive
+        url: https://github.com/AyatanaIndicators/libayatana-appindicator/archive/0.5.93.tar.gz
+        sha256: 'cbefed7a918a227bf71286246e237fcd3a9c8499b3eaac4897811a869409edf0'
+
   - name: leptonica
     buildsystem: cmake-ninja
     builddir: true
