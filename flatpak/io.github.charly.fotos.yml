@@ -74,6 +74,7 @@ modules:
       - -DENABLE_BINDINGS_MONO=NO
       - -DENABLE_BINDINGS_VALA=NO
       - -DENABLE_BINDINGS_PYTHON=NO
+      - -DENABLE_GTKDOC=NO
     sources:
       - type: archive
         url: https://github.com/AyatanaIndicators/libayatana-appindicator/archive/0.5.93.tar.gz
