@@ -1,13 +1,29 @@
+# Release workflow - build cross-platform binaries and publish a GitHub release
+#
+# Triggered by pushing a version tag (e.g., `git tag v0.1.0 && git push --tags`).
+# Creates a GitHub Release with:
+#   - fotos-mcp MCP server binaries for Linux, macOS, and Windows
+#   - fotos desktop app packages (Linux .deb/.AppImage, Windows .msi/.exe)
+# Then auto-updates homebrew-charly and scoop-charly for both fotos-mcp and fotos.
+#
+# Required secrets:
+#   GITHUB_TOKEN       - automatically provided by GitHub Actions
+#   TAP_GITHUB_TOKEN   - PAT with repo write access to homebrew-charly and scoop-charly
+
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
 
-# ── fotos-mcp: build binaries on each platform, release via goreleaser ─────────
+# ── fotos-mcp: build binaries on each platform ────────────────────────────────
 
 jobs:
   mcp-linux:
@@ -36,16 +52,16 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
-      - name: Collect prebuilt binaries
+      - name: Stage binaries
         run: |
-          mkdir -p prebuilt/linux_amd64 prebuilt/linux_arm64
-          cp target/x86_64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_amd64/fotos-mcp
-          cp target/aarch64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_arm64/fotos-mcp
+          mkdir -p bins/linux_amd64 bins/linux_arm64
+          cp target/x86_64-unknown-linux-gnu/release/fotos-mcp bins/linux_amd64/fotos-mcp
+          cp target/aarch64-unknown-linux-gnu/release/fotos-mcp bins/linux_arm64/fotos-mcp
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mcp-prebuilt-linux
-          path: prebuilt/
+          name: bins-linux
+          path: bins/
           retention-days: 1
 
   mcp-darwin:
@@ -67,16 +83,16 @@ jobs:
           cargo build --release --manifest-path src-mcp/Cargo.toml --target x86_64-apple-darwin
           cargo build --release --manifest-path src-mcp/Cargo.toml --target aarch64-apple-darwin
 
-      - name: Collect prebuilt binaries
+      - name: Stage binaries
         run: |
-          mkdir -p prebuilt/darwin_amd64 prebuilt/darwin_arm64
-          cp target/x86_64-apple-darwin/release/fotos-mcp prebuilt/darwin_amd64/fotos-mcp
-          cp target/aarch64-apple-darwin/release/fotos-mcp prebuilt/darwin_arm64/fotos-mcp
+          mkdir -p bins/darwin_amd64 bins/darwin_arm64
+          cp target/x86_64-apple-darwin/release/fotos-mcp bins/darwin_amd64/fotos-mcp
+          cp target/aarch64-apple-darwin/release/fotos-mcp bins/darwin_arm64/fotos-mcp
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mcp-prebuilt-darwin
-          path: prebuilt/
+          name: bins-darwin
+          path: bins/
           retention-days: 1
 
   mcp-windows:
@@ -96,16 +112,16 @@ jobs:
       - name: Build Windows binary
         run: cargo build --release --manifest-path src-mcp/Cargo.toml --target x86_64-pc-windows-msvc
 
-      - name: Collect prebuilt binaries
+      - name: Stage binaries
         shell: bash
         run: |
-          mkdir -p prebuilt/windows_amd64
-          cp target/x86_64-pc-windows-msvc/release/fotos-mcp.exe prebuilt/windows_amd64/fotos-mcp.exe
+          mkdir -p bins/windows_amd64
+          cp target/x86_64-pc-windows-msvc/release/fotos-mcp.exe bins/windows_amd64/fotos-mcp.exe
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mcp-prebuilt-windows
-          path: prebuilt/
+          name: bins-windows
+          path: bins/
           retention-days: 1
 
 # ── fotos desktop app: Tauri builds ───────────────────────────────────────────
@@ -198,19 +214,12 @@ jobs:
           name: windows-nsis
           path: target/release/bundle/nsis/*.exe
 
-# ── publish: build GitHub release, update tap/bucket ──────────────────────────
+# ── publish: create GitHub release, update tap/bucket ─────────────────────────
 
-  release:
+  publish:
     name: Publish Release
-    needs:
-      - mcp-linux
-      - mcp-darwin
-      - mcp-windows
-      - build-linux
-      - build-windows
+    needs: [mcp-linux, mcp-darwin, mcp-windows, build-linux, build-windows]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -218,110 +227,125 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          pattern: bins-*
+          path: bins/
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "linux-*"
           path: artifacts/
 
-      # Assemble prebuilt MCP binaries for goreleaser
-      - name: Prepare prebuilt binaries
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "windows-*"
+          path: artifacts/
+
+      - name: Package fotos-mcp archives and checksums
+        id: pkg
         run: |
-          mkdir -p prebuilt
-          cp -r artifacts/mcp-prebuilt-linux/* prebuilt/ 2>/dev/null || true
-          cp -r artifacts/mcp-prebuilt-darwin/* prebuilt/ 2>/dev/null || true
-          cp -r artifacts/mcp-prebuilt-windows/* prebuilt/ 2>/dev/null || true
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          mkdir -p dist
+          tar -czf "dist/fotos-mcp_${VERSION}_linux_amd64.tar.gz"  -C bins/linux_amd64  fotos-mcp
+          tar -czf "dist/fotos-mcp_${VERSION}_linux_arm64.tar.gz"  -C bins/linux_arm64  fotos-mcp
+          tar -czf "dist/fotos-mcp_${VERSION}_darwin_amd64.tar.gz" -C bins/darwin_amd64 fotos-mcp
+          tar -czf "dist/fotos-mcp_${VERSION}_darwin_arm64.tar.gz" -C bins/darwin_arm64 fotos-mcp
+          (cd bins/windows_amd64 && zip "$(pwd)/../../dist/fotos-mcp_${VERSION}_windows_amd64.zip" fotos-mcp.exe)
+          cd dist && sha256sum *.tar.gz *.zip > checksums.txt
 
-      - uses: goreleaser/goreleaser-action@v6
-        with:
-          version: "~> v2"
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
-
-      # Upload Tauri desktop app assets to the same GitHub release
-      - name: Upload desktop app assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/linux-deb/*.deb
-            artifacts/linux-appimage/*.AppImage
-            artifacts/windows-msi/*.msi
+      - name: Create GitHub release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.pkg.outputs.version }}"
+          PRERELEASE=""
+          [[ "${TAG}" == *-* ]] && PRERELEASE="--prerelease"
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --generate-notes \
+            $PRERELEASE \
+            dist/fotos-mcp_${VERSION}_linux_amd64.tar.gz \
+            dist/fotos-mcp_${VERSION}_linux_arm64.tar.gz \
+            dist/fotos-mcp_${VERSION}_darwin_amd64.tar.gz \
+            dist/fotos-mcp_${VERSION}_darwin_arm64.tar.gz \
+            dist/fotos-mcp_${VERSION}_windows_amd64.zip \
+            dist/checksums.txt \
+            artifacts/linux-deb/*.deb \
+            artifacts/linux-appimage/*.AppImage \
+            artifacts/windows-msi/*.msi \
             artifacts/windows-nsis/*.exe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Update Homebrew cask for the fotos desktop app
+      - name: Update Homebrew formula (fotos-mcp)
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.pkg.outputs.version }}"
+          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/homebrew-charly.git" /tmp/tap
+          python3 scripts/update-homebrew-mcp.py \
+            /tmp/tap/Formula/fotos-mcp.rb \
+            "${VERSION}" "${TAG}" dist/checksums.txt
+          cd /tmp/tap
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Formula/fotos-mcp.rb
+          git diff --staged --quiet || git commit -m "Update fotos-mcp to ${VERSION}"
+          git push
+
+      - name: Update Scoop manifest (fotos-mcp)
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.pkg.outputs.version }}"
+          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/scoop-charly.git" /tmp/scoop
+          python3 scripts/update-scoop-mcp.py \
+            /tmp/scoop/bucket/fotos-mcp.json \
+            "${VERSION}" "${TAG}" dist/checksums.txt
+          cd /tmp/scoop
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add bucket/fotos-mcp.json
+          git diff --staged --quiet || git commit -m "Update fotos-mcp to ${VERSION}"
+          git push
+
       - name: Update Homebrew cask (fotos)
         env:
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.pkg.outputs.version }}"
           APPIMAGE=$(ls artifacts/linux-appimage/*.AppImage | head -1)
           APPIMAGE_SHA=$(sha256sum "$APPIMAGE" | awk '{print $1}')
-
-          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/homebrew-charly.git" /tmp/homebrew-charly
-
-          cat > /tmp/homebrew-charly/Casks/fotos.rb << CASK
-          cask "fotos" do
-            version "${VERSION}"
-
-            on_linux do
-              url "https://github.com/charly-vibes/fotos/releases/download/v${VERSION}/fotos_${VERSION}_amd64.AppImage"
-              sha256 "${APPIMAGE_SHA}"
-            end
-
-            on_macos do
-              url "https://github.com/charly-vibes/fotos/releases/download/v${VERSION}/fotos_${VERSION}_x64.dmg"
-              sha256 :no_check
-            end
-
-            name "Fotos"
-            desc "AI-powered screenshot capture and analysis tool"
-            homepage "https://github.com/charly-vibes/fotos"
-
-            on_linux do
-              binary "fotos_#{version}_amd64.AppImage", target: "fotos"
-            end
-
-            on_macos do
-              app "Fotos.app"
-            end
-
-            zap trash: [
-              "~/.config/fotos",
-              "~/.local/share/fotos",
-              "~/Library/Application Support/fotos",
-              "~/Library/Caches/fotos",
-              "~/Library/Preferences/io.github.charly.fotos.plist",
-            ]
-          end
-          CASK
-
-          cd /tmp/homebrew-charly
-          git config user.email "noreply@github.com"
+          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/homebrew-charly.git" /tmp/tap-cask
+          python3 scripts/update-homebrew-cask.py \
+            /tmp/tap-cask/Casks/fotos.rb \
+            "${VERSION}" "${TAG}" "${APPIMAGE_SHA}"
+          cd /tmp/tap-cask
+          git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add Casks/fotos.rb
-          git diff --cached --quiet || git commit -m "chore: update fotos cask to ${VERSION}"
+          git diff --staged --quiet || git commit -m "Update fotos cask to ${VERSION}"
           git push
 
-      # Update Scoop manifest for the fotos desktop app
-      - name: Update Scoop manifest (fotos)
+      - name: Update Scoop manifest (fotos desktop)
         env:
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.pkg.outputs.version }}"
           MSI=$(ls artifacts/windows-msi/*.msi | head -1)
           MSI_SHA=$(sha256sum "$MSI" | awk '{print $1}')
-
-          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/scoop-charly.git" /tmp/scoop-charly
-
-          jq \
-            --arg v "$VERSION" \
-            --arg hash "sha256:$MSI_SHA" \
-            --arg url "https://github.com/charly-vibes/fotos/releases/download/v${VERSION}/fotos_${VERSION}_x64_en-US.msi" \
-            '.version = $v | .hash = $hash | .url = $url | .autoupdate.url = "https://github.com/charly-vibes/fotos/releases/download/v$version/fotos_$version_x64_en-US.msi"' \
-            /tmp/scoop-charly/bucket/fotos.json > /tmp/fotos-updated.json
-          mv /tmp/fotos-updated.json /tmp/scoop-charly/bucket/fotos.json
-
-          cd /tmp/scoop-charly
-          git config user.email "noreply@github.com"
+          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/scoop-charly.git" /tmp/scoop-desktop
+          python3 scripts/update-scoop-desktop.py \
+            /tmp/scoop-desktop/bucket/fotos.json \
+            "${VERSION}" "${TAG}" "${MSI_SHA}"
+          cd /tmp/scoop-desktop
+          git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add bucket/fotos.json
-          git diff --cached --quiet || git commit -m "chore: update fotos to ${VERSION}"
+          git diff --staged --quiet || git commit -m "Update fotos to ${VERSION}"
           git push
