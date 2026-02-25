@@ -115,6 +115,14 @@ pub fn run() {
             let handle = app.handle().clone();
             let is_capturing = Arc::new(AtomicBool::new(false));
 
+            // Start the IPC server so fotos-mcp can connect.
+            let ipc_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = ipc::server::start_ipc_server(ipc_handle).await {
+                    tracing::error!("IPC server exited: {e}");
+                }
+            });
+
             let r1 = app.global_shortcut().on_shortcut("ctrl+shift+s", {
                 let handle = handle.clone();
                 let is_capturing = is_capturing.clone();
@@ -172,6 +180,11 @@ pub fn run() {
             commands::settings::set_settings,
             commands::settings::set_api_key,
         ])
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                let _ = std::fs::remove_file(ipc::server::socket_path());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running Fotos");
 }
