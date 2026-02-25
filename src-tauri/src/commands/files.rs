@@ -5,8 +5,8 @@ use chrono::Local;
 use directories::UserDirs;
 use image::Rgba;
 use imageproc::drawing::{
-    draw_filled_circle_mut, draw_filled_ellipse_mut, draw_hollow_ellipse_mut,
-    draw_hollow_rect_mut, draw_line_segment_mut, draw_text_mut,
+    draw_filled_circle_mut, draw_filled_ellipse_mut, draw_hollow_ellipse_mut, draw_hollow_rect_mut,
+    draw_line_segment_mut, draw_text_mut,
 };
 use imageproc::rect::Rect;
 use serde::{Deserialize, Serialize};
@@ -216,8 +216,7 @@ pub async fn import_annotations(app: tauri::AppHandle) -> Result<Vec<Annotation>
         .into_path()
         .map_err(|e| format!("invalid path: {e}"))?;
 
-    let content =
-        std::fs::read_to_string(&path).map_err(|e| format!("read error: {e}"))?;
+    let content = std::fs::read_to_string(&path).map_err(|e| format!("read error: {e}"))?;
 
     serde_json::from_str(&content).map_err(|e| format!("invalid JSON: {e}"))
 }
@@ -372,7 +371,9 @@ fn composite_arrow(composite: &mut image::RgbaImage, anno: &Annotation) {
         _ => return,
     };
     let stroke_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
-    let Ok(color) = parse_color(stroke_str) else { return };
+    let Ok(color) = parse_color(stroke_str) else {
+        return;
+    };
     let sw = anno.stroke_width.unwrap_or(2.0).max(1.0);
 
     let p1 = &points[0];
@@ -381,9 +382,12 @@ fn composite_arrow(composite: &mut image::RgbaImage, anno: &Annotation) {
     // Shaft.
     draw_thick_line(
         composite,
-        p1.x as f32, p1.y as f32,
-        p2.x as f32, p2.y as f32,
-        color, sw as f32,
+        p1.x as f32,
+        p1.y as f32,
+        p2.x as f32,
+        p2.y as f32,
+        color,
+        sw as f32,
     );
 
     // Arrowhead — two lines from tip.
@@ -402,8 +406,24 @@ fn composite_arrow(composite: &mut image::RgbaImage, anno: &Annotation) {
     let wx2 = (p2.x - head_len * (angle + wing).cos()) as f32;
     let wy2 = (p2.y - head_len * (angle + wing).sin()) as f32;
 
-    draw_thick_line(composite, p2.x as f32, p2.y as f32, wx1, wy1, color, sw as f32);
-    draw_thick_line(composite, p2.x as f32, p2.y as f32, wx2, wy2, color, sw as f32);
+    draw_thick_line(
+        composite,
+        p2.x as f32,
+        p2.y as f32,
+        wx1,
+        wy1,
+        color,
+        sw as f32,
+    );
+    draw_thick_line(
+        composite,
+        p2.x as f32,
+        p2.y as f32,
+        wx2,
+        wy2,
+        color,
+        sw as f32,
+    );
 }
 
 fn composite_ellipse(composite: &mut image::RgbaImage, anno: &Annotation) {
@@ -448,7 +468,9 @@ fn composite_freehand(composite: &mut image::RgbaImage, anno: &Annotation) {
         _ => return,
     };
     let stroke_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
-    let Ok(color) = parse_color(stroke_str) else { return };
+    let Ok(color) = parse_color(stroke_str) else {
+        return;
+    };
     let sw = anno.stroke_width.unwrap_or(2.0).max(1.0);
 
     for i in 0..points.len() - 1 {
@@ -456,9 +478,12 @@ fn composite_freehand(composite: &mut image::RgbaImage, anno: &Annotation) {
         let p2 = &points[i + 1];
         draw_thick_line(
             composite,
-            p1.x as f32, p1.y as f32,
-            p2.x as f32, p2.y as f32,
-            color, sw as f32,
+            p1.x as f32,
+            p1.y as f32,
+            p2.x as f32,
+            p2.y as f32,
+            color,
+            sw as f32,
         );
     }
 }
@@ -474,7 +499,9 @@ fn composite_highlight(composite: &mut image::RgbaImage, anno: &Annotation) {
     }
 
     let color_str = anno.highlight_color.as_deref().unwrap_or("#FFFF00");
-    let Ok(mut color) = parse_color(color_str) else { return };
+    let Ok(mut color) = parse_color(color_str) else {
+        return;
+    };
     // Always 0.4 opacity per spec.
     color[3] = (0.4 * 255.0) as u8;
 
@@ -559,7 +586,9 @@ fn composite_step(composite: &mut image::RgbaImage, anno: &Annotation) {
     let radius = size / 2;
 
     let stroke_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
-    let Ok(color) = parse_color(stroke_str) else { return };
+    let Ok(color) = parse_color(stroke_str) else {
+        return;
+    };
 
     draw_filled_circle_mut(composite, (cx, cy), radius, color);
 
@@ -571,18 +600,31 @@ fn composite_step(composite: &mut image::RgbaImage, anno: &Annotation) {
     let font = embedded_font();
     let text = step.to_string();
     let font_size = (size as f32 * 0.6).max(8.0);
-    let scale = PxScale { x: font_size, y: font_size };
+    let scale = PxScale {
+        x: font_size,
+        y: font_size,
+    };
     let scaled = font.as_scaled(scale);
-    let text_width: f32 = text.chars().map(|c| scaled.h_advance(font.glyph_id(c))).sum();
+    let text_width: f32 = text
+        .chars()
+        .map(|c| scaled.h_advance(font.glyph_id(c)))
+        .sum();
     let ascent = scaled.ascent();
     let tx = cx - (text_width / 2.0) as i32;
     let ty = cy - (ascent / 2.0) as i32;
-    draw_text_mut(composite, Rgba([255, 255, 255, 255]), tx, ty, scale, &font, &text);
+    draw_text_mut(
+        composite,
+        Rgba([255, 255, 255, 255]),
+        tx,
+        ty,
+        scale,
+        &font,
+        &text,
+    );
 }
 
 fn embedded_font() -> FontVec {
-    static BYTES: &[u8] =
-        include_bytes!("../../fonts/LiberationSans-Regular.ttf");
+    static BYTES: &[u8] = include_bytes!("../../fonts/LiberationSans-Regular.ttf");
     FontVec::try_from_vec(BYTES.to_vec()).expect("embedded font is valid")
 }
 
@@ -596,10 +638,15 @@ fn composite_text(composite: &mut image::RgbaImage, anno: &Annotation) {
     let x = anno.x as i32;
     let y = anno.y as i32;
     let font_size = anno.font_size.unwrap_or(20.0) as f32;
-    let scale = PxScale { x: font_size, y: font_size };
+    let scale = PxScale {
+        x: font_size,
+        y: font_size,
+    };
 
     let stroke_str = anno.stroke_color.as_deref().unwrap_or("#FF0000");
-    let Ok(color) = parse_color(stroke_str) else { return };
+    let Ok(color) = parse_color(stroke_str) else {
+        return;
+    };
 
     let line_height = (font_size * 1.4) as i32;
     for (i, line) in text.lines().enumerate() {
@@ -616,8 +663,10 @@ fn composite_text(composite: &mut image::RgbaImage, anno: &Annotation) {
 /// Draw a line with approximate stroke width by drawing parallel offset lines.
 fn draw_thick_line(
     composite: &mut image::RgbaImage,
-    x1: f32, y1: f32,
-    x2: f32, y2: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
     color: Rgba<u8>,
     width: f32,
 ) {
@@ -801,8 +850,15 @@ mod tests {
     fn compositing_stroke_pixel_is_stroke_color() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
         let anno = make_annotation(
-            "rect", 10.0, 10.0, 30.0, 20.0,
-            Some("#ff0000"), Some("transparent"), Some(1.0), Some(1.0),
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("#ff0000"),
+            Some("transparent"),
+            Some(1.0),
+            Some(1.0),
         );
         composite_rectangle(&mut img, &anno);
         assert_eq!(*img.get_pixel(10, 10), Rgba([255, 0, 0, 255]));
@@ -812,8 +868,15 @@ mod tests {
     fn compositing_outside_pixel_unchanged() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
         let anno = make_annotation(
-            "rect", 10.0, 10.0, 30.0, 20.0,
-            Some("#ff0000"), Some("transparent"), Some(1.0), Some(1.0),
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("#ff0000"),
+            Some("transparent"),
+            Some(1.0),
+            Some(1.0),
         );
         composite_rectangle(&mut img, &anno);
         assert_eq!(*img.get_pixel(0, 0), Rgba([255, 255, 255, 255]));
@@ -824,8 +887,15 @@ mod tests {
     fn compositing_fill_pixel_is_fill_color() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
         let anno = make_annotation(
-            "rect", 10.0, 10.0, 30.0, 20.0,
-            Some("transparent"), Some("#0000ff"), Some(0.0), Some(1.0),
+            "rect",
+            10.0,
+            10.0,
+            30.0,
+            20.0,
+            Some("transparent"),
+            Some("#0000ff"),
+            Some(0.0),
+            Some(1.0),
         );
         composite_rectangle(&mut img, &anno);
         let px = img.get_pixel(20, 15);
@@ -837,14 +907,24 @@ mod tests {
     fn compositing_highlight_uses_fixed_opacity() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([0, 0, 0, 255]));
         let mut anno = make_annotation(
-            "highlight", 10.0, 10.0, 20.0, 20.0,
-            None, None, None, Some(1.0),
+            "highlight",
+            10.0,
+            10.0,
+            20.0,
+            20.0,
+            None,
+            None,
+            None,
+            Some(1.0),
         );
         anno.highlight_color = Some("#FFFF00".into());
         composite_highlight(&mut img, &anno);
         // The yellow should be blended at 0.4 opacity over black.
         let px = img.get_pixel(20, 20);
-        assert!(px[0] > 0, "yellow channel should be non-zero after highlight");
+        assert!(
+            px[0] > 0,
+            "yellow channel should be non-zero after highlight"
+        );
         assert!(px[0] < 255, "should be blended, not fully opaque");
     }
 
@@ -857,29 +937,33 @@ mod tests {
                 img.put_pixel(x, y, Rgba([255, 0, 0, 255]));
             }
         }
-        let mut anno = make_annotation(
-            "blur", 0.0, 0.0, 20.0, 20.0,
-            None, None, None, None,
-        );
+        let mut anno = make_annotation("blur", 0.0, 0.0, 20.0, 20.0, None, None, None, None);
         anno.blur_radius = Some(10.0);
         composite_blur(&mut img, &anno);
         // After blur, the 10×10 blocks should all have the same average red color.
         let block1 = *img.get_pixel(0, 0);
         let block2 = *img.get_pixel(5, 5);
-        assert_eq!(block1, block2, "pixels within a blur block should be identical");
+        assert_eq!(
+            block1, block2,
+            "pixels within a blur block should be identical"
+        );
     }
 
     #[test]
     fn compositing_arrow_draws_something() {
         let mut img = RgbaImage::from_pixel(100, 100, Rgba([255, 255, 255, 255]));
         let mut anno = make_annotation(
-            "arrow", 0.0, 0.0, 0.0, 0.0,
-            Some("#ff0000"), None, Some(2.0), Some(1.0),
+            "arrow",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            Some("#ff0000"),
+            None,
+            Some(2.0),
+            Some(1.0),
         );
-        anno.points = Some(vec![
-            Point { x: 10.0, y: 50.0 },
-            Point { x: 80.0, y: 50.0 },
-        ]);
+        anno.points = Some(vec![Point { x: 10.0, y: 50.0 }, Point { x: 80.0, y: 50.0 }]);
         composite_arrow(&mut img, &anno);
         // At least the shaft midpoint should be red.
         let mid = img.get_pixel(45, 50);
@@ -953,14 +1037,22 @@ mod tests {
     fn encode_to_bytes_png_has_png_magic() {
         let img = RgbaImage::from_pixel(8, 8, Rgba([255, 0, 0, 255]));
         let bytes = encode_to_bytes(img, image::ImageFormat::Png, 85).unwrap();
-        assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n", "should start with PNG magic");
+        assert_eq!(
+            &bytes[..8],
+            b"\x89PNG\r\n\x1a\n",
+            "should start with PNG magic"
+        );
     }
 
     #[test]
     fn encode_to_bytes_jpeg_has_jpeg_magic() {
         let img = RgbaImage::from_pixel(8, 8, Rgba([255, 0, 0, 255]));
         let bytes = encode_to_bytes(img, image::ImageFormat::Jpeg, 85).unwrap();
-        assert_eq!(&bytes[..2], b"\xff\xd8", "should start with JPEG SOI marker");
+        assert_eq!(
+            &bytes[..2],
+            b"\xff\xd8",
+            "should start with JPEG SOI marker"
+        );
     }
 
     #[test]

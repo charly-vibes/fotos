@@ -23,12 +23,10 @@ pub async fn capture_via_portal() -> Result<image::DynamicImage> {
 
     tracing::info!("portal: request sent, awaiting user confirmation");
 
-    let response = request
-        .response()
-        .map_err(|e| {
-            tracing::error!("portal: response() failed: {e}");
-            anyhow::anyhow!("Screenshot portal request failed: {e}")
-        })?;
+    let response = request.response().map_err(|e| {
+        tracing::error!("portal: response() failed: {e}");
+        anyhow::anyhow!("Screenshot portal request failed: {e}")
+    })?;
 
     let uri = response.uri();
     tracing::info!("portal: got URI {uri}");
@@ -49,7 +47,11 @@ pub async fn capture_via_portal() -> Result<image::DynamicImage> {
     let img = image::open(&path)
         .with_context(|| format!("Failed to load portal screenshot from {}", path.display()))?;
 
-    tracing::info!("portal: image loaded ({}x{}), cleaning up temp file", img.width(), img.height());
+    tracing::info!(
+        "portal: image loaded ({}x{}), cleaning up temp file",
+        img.width(),
+        img.height()
+    );
 
     // Clean up the temp file left by the portal.
     let _ = std::fs::remove_file(&path);

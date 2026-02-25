@@ -34,12 +34,12 @@ pub async fn analyze(
     });
 
     let start = Instant::now();
-    let resp = client
-        .post(&url)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| anyhow::anyhow!("Ollama request failed (is Ollama running at {}?): {e}", config.url))?;
+    let resp = client.post(&url).json(&body).send().await.map_err(|e| {
+        anyhow::anyhow!(
+            "Ollama request failed (is Ollama running at {}?): {e}",
+            config.url
+        )
+    })?;
 
     let status = resp.status();
     let json: serde_json::Value = resp.json().await?;

@@ -4,7 +4,6 @@
 /// implemented here (fotos-kxs). Tools, resources, and IPC bridge are stubs
 /// pending fotos-0j0, fotos-rsw, and fotos-d6e respectively.
 use rmcp::{
-    ServerHandler,
     model::{
         CallToolRequestParam, CallToolResult, GetPromptRequestParam, GetPromptResult,
         Implementation, InitializeRequestParam, ListPromptsResult, ListResourcesResult,
@@ -12,7 +11,7 @@ use rmcp::{
         ServerCapabilities, ServerInfo,
     },
     service::{RequestContext, RoleServer},
-    Error as McpError,
+    Error as McpError, ServerHandler,
 };
 use tracing::info;
 

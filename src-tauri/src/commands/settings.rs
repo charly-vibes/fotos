@@ -124,7 +124,9 @@ fn load_section<T: serde::de::DeserializeOwned + Default>(
 
 #[tauri::command]
 pub fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
-    let store = app.store(STORE_PATH).map_err(|e| format!("Store error: {e}"))?;
+    let store = app
+        .store(STORE_PATH)
+        .map_err(|e| format!("Store error: {e}"))?;
     Ok(Settings {
         capture: load_section(&store, "capture"),
         annotation: load_section(&store, "annotation"),
@@ -135,7 +137,9 @@ pub fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
 
 #[tauri::command]
 pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
-    let store = app.store(STORE_PATH).map_err(|e| format!("Store error: {e}"))?;
+    let store = app
+        .store(STORE_PATH)
+        .map_err(|e| format!("Store error: {e}"))?;
     store.set(
         "capture",
         serde_json::to_value(&settings.capture).map_err(|e| e.to_string())?,
@@ -169,7 +173,10 @@ pub fn get_api_key(provider: String) -> Result<String, String> {
         Ok(key) => {
             // Return masked form: 8 bullets + last 4 chars (or all bullets if short)
             let masked = if key.len() > 4 {
-                format!("\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}{}", &key[key.len() - 4..])
+                format!(
+                    "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}{}",
+                    &key[key.len() - 4..]
+                )
             } else {
                 "\u{2022}".repeat(key.len())
             };
@@ -186,7 +193,10 @@ pub fn delete_api_key(provider: String) -> Result<(), String> {
         Ok(_) => Ok(()),
         Err(e) => {
             // Treat missing entry as success
-            if matches!(e.downcast_ref::<keyring::Error>(), Some(keyring::Error::NoEntry)) {
+            if matches!(
+                e.downcast_ref::<keyring::Error>(),
+                Some(keyring::Error::NoEntry)
+            ) {
                 Ok(())
             } else {
                 Err(format!("Failed to delete API key: {e}"))
@@ -209,29 +219,23 @@ pub async fn test_api_key(provider: String) -> Result<(), String> {
         .map_err(|e| format!("HTTP client error: {e}"))?;
 
     let status = match provider.as_str() {
-        "anthropic" => {
-            client
-                .get("https://api.anthropic.com/v1/models")
-                .header("x-api-key", &key)
-                .header("anthropic-version", "2023-06-01")
-                .send()
-                .await
-                .map_err(|e| format!("Request failed: {e}"))?
-                .status()
-        }
-        "openai" => {
-            client
-                .get("https://api.openai.com/v1/models")
-                .header(header::AUTHORIZATION, format!("Bearer {key}"))
-                .send()
-                .await
-                .map_err(|e| format!("Request failed: {e}"))?
-                .status()
-        }
+        "anthropic" => client
+            .get("https://api.anthropic.com/v1/models")
+            .header("x-api-key", &key)
+            .header("anthropic-version", "2023-06-01")
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {e}"))?
+            .status(),
+        "openai" => client
+            .get("https://api.openai.com/v1/models")
+            .header(header::AUTHORIZATION, format!("Bearer {key}"))
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {e}"))?
+            .status(),
         "gemini" => {
-            let url = format!(
-                "https://generativelanguage.googleapis.com/v1/models?key={key}"
-            );
+            let url = format!("https://generativelanguage.googleapis.com/v1/models?key={key}");
             client
                 .get(&url)
                 .send()

@@ -47,13 +47,20 @@ struct IpcError {
 
 impl IpcResponse {
     fn ok(id: String, value: Value) -> Self {
-        Self { id, ok: Some(value), error: None }
+        Self {
+            id,
+            ok: Some(value),
+            error: None,
+        }
     }
     fn err(id: String, code: &str, message: String) -> Self {
         Self {
             id,
             ok: None,
-            error: Some(IpcError { code: code.to_owned(), message }),
+            error: Some(IpcError {
+                code: code.to_owned(),
+                message,
+            }),
         }
     }
 }
@@ -150,11 +157,7 @@ async fn handle_connection(mut stream: UnixStream, app: tauri::AppHandle) -> Res
 ///
 /// Currently handles only `get_settings`. Additional commands are added in
 /// fotos-0j0 when the MCP tool implementations are wired up.
-async fn dispatch(
-    app: &tauri::AppHandle,
-    command: &str,
-    _params: Value,
-) -> anyhow::Result<Value> {
+async fn dispatch(app: &tauri::AppHandle, command: &str, _params: Value) -> anyhow::Result<Value> {
     match command {
         "get_settings" => {
             let settings = crate::commands::settings::get_settings(app.clone())

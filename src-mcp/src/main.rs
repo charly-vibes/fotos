@@ -3,7 +3,7 @@ mod prompts;
 mod server;
 
 use anyhow::Result;
-use rmcp::{ServiceExt, transport::stdio};
+use rmcp::{transport::stdio, ServiceExt};
 use tracing_subscriber::{fmt, EnvFilter};
 
 use server::FotosMcpServer;

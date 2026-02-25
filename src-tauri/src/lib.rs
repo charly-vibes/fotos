@@ -7,18 +7,20 @@ pub mod ipc;
 use base64::prelude::*;
 use std::io::Cursor;
 use std::sync::{
-    Arc,
     atomic::{AtomicBool, Ordering},
+    Arc,
 };
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use uuid::Uuid;
 
 fn init_logging() {
-    use tracing_subscriber::{EnvFilter, fmt};
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
-    fmt().with_env_filter(filter).with_writer(std::io::stderr).init();
+    use tracing_subscriber::{fmt, EnvFilter};
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
 }
 
 async fn do_capture_and_emit(
@@ -59,10 +61,14 @@ async fn do_capture_and_emit(
     let result: Result<commands::capture::ScreenshotResponse, String> = async {
         let image = if in_flatpak {
             tracing::info!("do_capture_and_emit: using portal backend");
-            capture::portal::capture_via_portal().await.map_err(|e| e.to_string())?
+            capture::portal::capture_via_portal()
+                .await
+                .map_err(|e| e.to_string())?
         } else {
             tracing::info!("do_capture_and_emit: using xcap backend");
-            capture::xcap_backend::capture_fullscreen().await.map_err(|e| e.to_string())?
+            capture::xcap_backend::capture_fullscreen()
+                .await
+                .map_err(|e| e.to_string())?
         };
         let image = Arc::new(image);
         let id = Uuid::new_v4();
@@ -86,7 +92,11 @@ async fn do_capture_and_emit(
 
     match result {
         Ok(ref payload) => {
-            tracing::info!("do_capture_and_emit: captured {}x{}, emitting '{event_name}'", payload.width, payload.height);
+            tracing::info!(
+                "do_capture_and_emit: captured {}x{}, emitting '{event_name}'",
+                payload.width,
+                payload.height
+            );
             let _ = app.emit(event_name, payload);
         }
         Err(ref e) => {
@@ -98,7 +108,10 @@ async fn do_capture_and_emit(
 
 pub fn run() {
     init_logging();
-    tracing::info!("Fotos starting (FLATPAK_ID={:?})", std::env::var("FLATPAK_ID").ok());
+    tracing::info!(
+        "Fotos starting (FLATPAK_ID={:?})",
+        std::env::var("FLATPAK_ID").ok()
+    );
 
     let image_store = capture::ImageStore::new();
 

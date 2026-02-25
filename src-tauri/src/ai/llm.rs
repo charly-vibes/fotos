@@ -36,9 +36,15 @@ pub async fn analyze(
         .build()?;
 
     match provider {
-        LlmProvider::Claude { model } => analyze_claude(&client, image_b64, prompt, model, api_key).await,
-        LlmProvider::OpenAI { model } => analyze_openai(&client, image_b64, prompt, model, api_key).await,
-        LlmProvider::Gemini { model } => analyze_gemini(&client, image_b64, prompt, model, api_key).await,
+        LlmProvider::Claude { model } => {
+            analyze_claude(&client, image_b64, prompt, model, api_key).await
+        }
+        LlmProvider::OpenAI { model } => {
+            analyze_openai(&client, image_b64, prompt, model, api_key).await
+        }
+        LlmProvider::Gemini { model } => {
+            analyze_gemini(&client, image_b64, prompt, model, api_key).await
+        }
     }
 }
 
@@ -195,11 +201,7 @@ async fn analyze_gemini(
     });
 
     let start = Instant::now();
-    let resp = client
-        .post(&url)
-        .json(&body)
-        .send()
-        .await?;
+    let resp = client.post(&url).json(&body).send().await?;
 
     let status = resp.status();
     let json: serde_json::Value = resp.json().await?;
@@ -218,7 +220,9 @@ async fn analyze_gemini(
         .unwrap_or("")
         .to_string();
 
-    let tokens_used = json["usageMetadata"]["totalTokenCount"].as_u64().unwrap_or(0) as u32;
+    let tokens_used = json["usageMetadata"]["totalTokenCount"]
+        .as_u64()
+        .unwrap_or(0) as u32;
 
     Ok(LlmOutput {
         response,

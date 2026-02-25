@@ -121,15 +121,17 @@ pub async fn take_screenshot(
                 })?
         }
         "region" => {
-            return Err(
-                "Region capture is handled in-app; use fullscreen + crop_image".into(),
-            );
+            return Err("Region capture is handled in-app; use fullscreen + crop_image".into());
         }
         other => {
             return Err(format!("Unknown capture mode '{}'", other));
         }
     };
-    tracing::info!("take_screenshot: image captured ({}x{})", image.width(), image.height());
+    tracing::info!(
+        "take_screenshot: image captured ({}x{})",
+        image.width(),
+        image.height()
+    );
 
     let image = Arc::new(image);
     let width = image.width();
@@ -174,8 +176,7 @@ pub fn crop_image(
     height: u32,
     store: tauri::State<'_, ImageStore>,
 ) -> Result<ScreenshotResponse, String> {
-    let id = Uuid::parse_str(&image_id)
-        .map_err(|_| format!("Invalid image ID: {image_id}"))?;
+    let id = Uuid::parse_str(&image_id).map_err(|_| format!("Invalid image ID: {image_id}"))?;
     let base = store
         .get(&id)
         .ok_or_else(|| format!("No image found for ID: {image_id}"))?;
@@ -212,8 +213,7 @@ pub fn crop_image(
 #[tauri::command]
 pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
     tokio::task::spawn_blocking(|| {
-        let monitors =
-            Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {e}"))?;
+        let monitors = Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {e}"))?;
         monitors
             .into_iter()
             .map(|m| {
@@ -224,7 +224,9 @@ pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
                     y: m.y().map_err(|e| format!("monitor.y: {e}"))?,
                     width: m.width().map_err(|e| format!("monitor.width: {e}"))?,
                     height: m.height().map_err(|e| format!("monitor.height: {e}"))?,
-                    is_primary: m.is_primary().map_err(|e| format!("monitor.is_primary: {e}"))?,
+                    is_primary: m
+                        .is_primary()
+                        .map_err(|e| format!("monitor.is_primary: {e}"))?,
                 })
             })
             .collect()
@@ -236,8 +238,7 @@ pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
 #[tauri::command]
 pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
     tokio::task::spawn_blocking(|| {
-        let windows =
-            Window::all().map_err(|e| format!("Failed to enumerate windows: {e}"))?;
+        let windows = Window::all().map_err(|e| format!("Failed to enumerate windows: {e}"))?;
         windows
             .into_iter()
             .map(|w| {

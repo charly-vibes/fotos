@@ -39,20 +39,33 @@ pub fn detect_pii(ocr_regions: &[super::ocr::OcrRegion]) -> Result<Vec<PiiMatch>
         let start = full_text.len();
         full_text.push_str(&region.text);
         let end = full_text.len();
-        word_spans.push(WordSpan { start, end, region_idx: i });
+        word_spans.push(WordSpan {
+            start,
+            end,
+            region_idx: i,
+        });
         full_text.push(' ');
     }
 
     // (pii_type, regex_pattern)
     let patterns: &[(&str, &str)] = &[
-        ("email",       r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"),
-        ("phone",       r"(?:\+1[\s\-]?)?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}"),
-        ("ssn",         r"\b\d{3}-\d{2}-\d{4}\b"),
+        ("email", r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"),
+        (
+            "phone",
+            r"(?:\+1[\s\-]?)?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}",
+        ),
+        ("ssn", r"\b\d{3}-\d{2}-\d{4}\b"),
         ("credit_card", r"\b(?:\d{4}[\s\-]?){3}\d{4}\b"),
-        ("ip_v4",       r"\b(?:25[0-5]|2\d{2}|1\d{2}|[1-9]\d|\d)(?:\.(?:25[0-5]|2\d{2}|1\d{2}|[1-9]\d|\d)){3}\b"),
-        ("ip_v6",       r"\b(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{0,4}\b"),
-        ("api_key",     r"\b(?:sk|pk)[-_][a-zA-Z0-9]{16,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}\b"),
-        ("url",         r"https?://[^\s]+"),
+        (
+            "ip_v4",
+            r"\b(?:25[0-5]|2\d{2}|1\d{2}|[1-9]\d|\d)(?:\.(?:25[0-5]|2\d{2}|1\d{2}|[1-9]\d|\d)){3}\b",
+        ),
+        ("ip_v6", r"\b(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{0,4}\b"),
+        (
+            "api_key",
+            r"\b(?:sk|pk)[-_][a-zA-Z0-9]{16,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}\b",
+        ),
+        ("url", r"https?://[^\s]+"),
     ];
 
     let mut matches = Vec::new();
@@ -129,7 +142,11 @@ fn luhn_valid(digits: &str) -> bool {
             let d = c.to_digit(10).unwrap_or(0);
             if i % 2 == 1 {
                 let doubled = d * 2;
-                if doubled > 9 { doubled - 9 } else { doubled }
+                if doubled > 9 {
+                    doubled - 9
+                } else {
+                    doubled
+                }
             } else {
                 d
             }
@@ -144,7 +161,14 @@ mod tests {
     use crate::ai::ocr::OcrRegion;
 
     fn region(text: &str, x: u32, y: u32, w: u32, h: u32) -> OcrRegion {
-        OcrRegion { text: text.into(), x, y, w, h, confidence: 1.0 }
+        OcrRegion {
+            text: text.into(),
+            x,
+            y,
+            w,
+            h,
+            confidence: 1.0,
+        }
     }
 
     #[test]
@@ -185,7 +209,11 @@ mod tests {
     fn detects_api_key_sk() {
         let regions = [region("sk-abcdefghijklmnopqrstuvwxyz123456", 0, 0, 200, 16)];
         let matches = detect_pii(&regions).unwrap();
-        assert!(matches.iter().any(|m| m.pii_type == "api_key"), "{:?}", matches.iter().map(|m| &m.pii_type).collect::<Vec<_>>());
+        assert!(
+            matches.iter().any(|m| m.pii_type == "api_key"),
+            "{:?}",
+            matches.iter().map(|m| &m.pii_type).collect::<Vec<_>>()
+        );
     }
 
     #[test]

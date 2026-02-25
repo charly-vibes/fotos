@@ -86,7 +86,12 @@ pub fn run_ocr(
     };
 
     let mut tess = Tesseract::new(Some(tessdata_path), Some(&lang_str))
-        .map_err(|e| format!("Failed to initialize Tesseract with language '{}': {}", lang_str, e))?
+        .map_err(|e| {
+            format!(
+                "Failed to initialize Tesseract with language '{}': {}",
+                lang_str, e
+            )
+        })?
         .set_frame(&raw_data, width_i32, height_i32, 3, bytes_per_line)
         .map_err(|e| format!("Failed to set image: {}", e))?
         .recognize()
@@ -272,12 +277,9 @@ pub async fn analyze_llm(
         .unwrap_or_default();
 
     // Compress image before sending to LLM
-    let image_b64 = compress::compress_for_llm(
-        &image,
-        ai_settings.image_max_dim,
-        ai_settings.image_quality,
-    )
-    .map_err(|e| format!("Image compression failed: {e}"))?;
+    let image_b64 =
+        compress::compress_for_llm(&image, ai_settings.image_max_dim, ai_settings.image_quality)
+            .map_err(|e| format!("Image compression failed: {e}"))?;
 
     let prompt_text = prompt.unwrap_or_else(|| "Describe this image.".to_string());
 

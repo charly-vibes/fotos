@@ -6,14 +6,14 @@
 ///
 /// Call `AppBridge::connect()` and handle the error to gracefully fall back to
 /// standalone mode when the main Fotos app is not running.
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
-use tokio::time::{Duration, timeout};
+use tokio::time::{timeout, Duration};
 
 #[cfg(unix)]
 use tokio::net::UnixStream;
@@ -61,21 +61,20 @@ impl AppBridge {
         #[cfg(unix)]
         {
             let path = socket_path();
-            let stream =
-                timeout(Duration::from_secs(2), UnixStream::connect(&path))
-                    .await
-                    .map_err(|_| {
-                        anyhow!(
-                            "timeout connecting to Fotos app at {} — is it running?",
-                            path.display()
-                        )
-                    })?
-                    .map_err(|e| {
-                        anyhow!("failed to connect to {}: {e}", path.display())
-                    })?;
+            let stream = timeout(Duration::from_secs(2), UnixStream::connect(&path))
+                .await
+                .map_err(|_| {
+                    anyhow!(
+                        "timeout connecting to Fotos app at {} — is it running?",
+                        path.display()
+                    )
+                })?
+                .map_err(|e| anyhow!("failed to connect to {}: {e}", path.display()))?;
 
             tracing::info!("IPC bridge connected to {}", path.display());
-            Ok(Self { stream: Arc::new(Mutex::new(stream)) })
+            Ok(Self {
+                stream: Arc::new(Mutex::new(stream)),
+            })
         }
 
         #[cfg(not(unix))]
@@ -87,12 +86,19 @@ impl AppBridge {
         #[cfg(unix)]
         {
             // Generate a simple request ID.
-            let id = format!("{}", std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.subsec_nanos())
-                .unwrap_or(0));
+            let id = format!(
+                "{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.subsec_nanos())
+                    .unwrap_or(0)
+            );
 
-            let req = IpcRequest { id: id.clone(), command: command.to_owned(), params };
+            let req = IpcRequest {
+                id: id.clone(),
+                command: command.to_owned(),
+                params,
+            };
             let payload = serde_json::to_vec(&req)?;
 
             let mut stream = self.stream.lock().await;
