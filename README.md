@@ -31,6 +31,20 @@ just setup-flatpak   # one-time: install GNOME SDK runtimes
 just install         # build and install locally
 ```
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap charly-vibes/fotos
+brew install fotos
+```
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add charly-vibes https://github.com/charly-vibes/scoop-bucket
+scoop install fotos
+```
+
 ## Development
 
 This project builds inside a **fedora distrobox** (required on Bluefin/immutable Fedora).
