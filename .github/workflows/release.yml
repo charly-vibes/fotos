@@ -39,8 +39,8 @@ jobs:
       - name: Collect prebuilt binaries
         run: |
           mkdir -p prebuilt/linux_amd64 prebuilt/linux_arm64
-          cp src-mcp/target/x86_64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_amd64/fotos-mcp
-          cp src-mcp/target/aarch64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_arm64/fotos-mcp
+          cp target/x86_64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_amd64/fotos-mcp
+          cp target/aarch64-unknown-linux-gnu/release/fotos-mcp prebuilt/linux_arm64/fotos-mcp
 
       - uses: actions/upload-artifact@v4
         with:
@@ -70,8 +70,8 @@ jobs:
       - name: Collect prebuilt binaries
         run: |
           mkdir -p prebuilt/darwin_amd64 prebuilt/darwin_arm64
-          cp src-mcp/target/x86_64-apple-darwin/release/fotos-mcp prebuilt/darwin_amd64/fotos-mcp
-          cp src-mcp/target/aarch64-apple-darwin/release/fotos-mcp prebuilt/darwin_arm64/fotos-mcp
+          cp target/x86_64-apple-darwin/release/fotos-mcp prebuilt/darwin_amd64/fotos-mcp
+          cp target/aarch64-apple-darwin/release/fotos-mcp prebuilt/darwin_arm64/fotos-mcp
 
       - uses: actions/upload-artifact@v4
         with:
@@ -100,7 +100,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p prebuilt/windows_amd64
-          cp src-mcp/target/x86_64-pc-windows-msvc/release/fotos-mcp.exe prebuilt/windows_amd64/fotos-mcp.exe
+          cp target/x86_64-pc-windows-msvc/release/fotos-mcp.exe prebuilt/windows_amd64/fotos-mcp.exe
 
       - uses: actions/upload-artifact@v4
         with:
