@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.charly.fotos</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Fotos</name>
+  <summary>AI-powered screenshot capture, annotation, and analysis</summary>
+
+  <description>
+    <p>
+      Fotos is a screenshot tool with built-in annotation and AI capabilities.
+      Capture your screen, annotate with shapes, arrows, text, and highlights,
+      then use OCR or AI analysis to extract and process information from images.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Region and fullscreen screenshot capture</li>
+      <li>Annotation tools: rectangles, arrows, ellipses, freehand, text, step markers</li>
+      <li>Blur and highlight tools for privacy and emphasis</li>
+      <li>OCR text extraction with automatic PII detection and blur</li>
+      <li>AI image analysis via configurable LLM providers</li>
+      <li>Export annotations to JSON for round-trip editing</li>
+      <li>Copy to clipboard or save as PNG/JPEG/WebP</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.charly.fotos.desktop</launchable>
+
+  <url type="homepage">https://github.com/charly/fotos</url>
+  <url type="bugtracker">https://github.com/charly/fotos/issues</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Annotating a screenshot with arrows and text</caption>
+      <image>https://raw.githubusercontent.com/charly/fotos/main/docs/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Graphics</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>screenshot</keyword>
+    <keyword>capture</keyword>
+    <keyword>annotation</keyword>
+    <keyword>ocr</keyword>
+    <keyword>ai</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.2.0" date="2025-01-01">
+      <description>
+        <p>OCR bounding boxes, PII auto-blur, and font embedding for PNG export.</p>
+      </description>
+    </release>
+  </releases>
+
+  <provides>
+    <binary>fotos</binary>
+  </provides>
+</component>

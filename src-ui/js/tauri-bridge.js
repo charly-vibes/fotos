@@ -57,6 +57,10 @@ export async function exportAnnotations(imageId, annotations) {
   return invoke('export_annotations', { imageId, annotations });
 }
 
+export async function importAnnotations() {
+  return invoke('import_annotations');
+}
+
 export async function getSettings() {
   return invoke('get_settings');
 }

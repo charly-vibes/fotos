@@ -167,6 +167,7 @@ pub fn run() {
             commands::files::composite_image,
             commands::files::copy_to_clipboard,
             commands::files::export_annotations,
+            commands::files::import_annotations,
             commands::settings::get_settings,
             commands::settings::set_settings,
             commands::settings::set_api_key,

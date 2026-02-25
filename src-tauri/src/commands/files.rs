@@ -9,18 +9,18 @@ use imageproc::drawing::{
     draw_hollow_rect_mut, draw_line_segment_mut, draw_text_mut,
 };
 use imageproc::rect::Rect;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Annotation {
     pub id: String,
@@ -161,11 +161,63 @@ pub fn copy_to_clipboard(
 }
 
 #[tauri::command]
-pub fn export_annotations(
-    _image_id: String,
-    _annotations: Vec<Annotation>,
+pub async fn export_annotations(
+    app: tauri::AppHandle,
+    image_id: String,
+    annotations: Vec<Annotation>,
 ) -> Result<String, String> {
-    Err("Not yet implemented".into())
+    use tauri_plugin_dialog::DialogExt;
+    use tokio::sync::oneshot;
+
+    let (tx, rx) = oneshot::channel();
+    let default_name = format!("annotations-{}.json", &image_id[..image_id.len().min(8)]);
+    app.dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .set_file_name(&default_name)
+        .save_file(move |path| {
+            let _ = tx.send(path);
+        });
+
+    let path = rx
+        .await
+        .map_err(|_| "dialog error".to_string())?
+        .ok_or_else(|| "cancelled".to_string())?
+        .into_path()
+        .map_err(|e| format!("invalid path: {e}"))?;
+
+    let json = serde_json::to_string_pretty(&annotations)
+        .map_err(|e| format!("serialization error: {e}"))?;
+
+    std::fs::write(&path, json).map_err(|e| format!("write error: {e}"))?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn import_annotations(app: tauri::AppHandle) -> Result<Vec<Annotation>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    use tokio::sync::oneshot;
+
+    let (tx, rx) = oneshot::channel();
+    app.dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .pick_file(move |path| {
+            let _ = tx.send(path);
+        });
+
+    let path = rx
+        .await
+        .map_err(|_| "dialog error".to_string())?
+        .ok_or_else(|| "cancelled".to_string())?
+        .into_path()
+        .map_err(|e| format!("invalid path: {e}"))?;
+
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("read error: {e}"))?;
+
+    serde_json::from_str(&content).map_err(|e| format!("invalid JSON: {e}"))
 }
 
 // ── Compositing dispatch ──────────────────────────────────────────────────────

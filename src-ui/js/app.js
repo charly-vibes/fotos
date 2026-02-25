@@ -8,7 +8,7 @@ import { AddAnnotationCommand, CropCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog } from './tauri-bridge.js';
+import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
 let messageTimeout = null;
@@ -336,6 +336,34 @@ async function init() {
     }
   }
 
+  async function doExportAnnotations() {
+    const currentImageId = store.get('currentImageId');
+    if (!currentImageId) { setStatusMessage('No image loaded', false); return; }
+    const annotations = store.get('annotations');
+    if (!annotations.length) { setStatusMessage('No annotations to export', false); return; }
+    try {
+      const savedPath = await exportAnnotations(currentImageId, annotations);
+      showToast(`Annotations exported to ${savedPath}`);
+    } catch (error) {
+      if (String(error) !== 'cancelled') {
+        showToast(`Export failed: ${error}`, 'error');
+      }
+    }
+  }
+
+  async function doImportAnnotations() {
+    try {
+      const imported = await importAnnotations();
+      store.set('annotations', imported);
+      engine.render(imported);
+      showToast(`Imported ${imported.length} annotation${imported.length !== 1 ? 's' : ''}`);
+    } catch (error) {
+      if (String(error) !== 'cancelled') {
+        showToast(`Import failed: ${error}`, 'error');
+      }
+    }
+  }
+
   // Apply the crop tool selection: call backend, adjust annotations, record in history.
   async function applyCrop(cropRect) {
     const imageId = store.get('currentImageId');
@@ -422,6 +450,20 @@ async function init() {
     if (e.ctrlKey && e.key === 's') {
       e.preventDefault();
       await doSave();
+      return;
+    }
+
+    // Ctrl+E — export annotations to JSON
+    if (e.ctrlKey && !e.shiftKey && e.key === 'e') {
+      e.preventDefault();
+      await doExportAnnotations();
+      return;
+    }
+
+    // Ctrl+Shift+E — import annotations from JSON
+    if (e.ctrlKey && e.shiftKey && e.key === 'E') {
+      e.preventDefault();
+      await doImportAnnotations();
       return;
     }
 

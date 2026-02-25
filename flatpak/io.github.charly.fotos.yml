@@ -141,3 +141,7 @@ modules:
       - cargo build --release --offline
       - install -Dm755 target/release/fotos /app/bin/fotos
       - install -Dm755 target/release/fotos-mcp /app/bin/fotos-mcp
+      - install -Dm644 flatpak/io.github.charly.fotos.desktop /app/share/applications/io.github.charly.fotos.desktop
+      - install -Dm644 src-tauri/icons/32x32.png /app/share/icons/hicolor/32x32/apps/io.github.charly.fotos.png
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.charly.fotos.png
+      - install -Dm644 flatpak/io.github.charly.fotos.metainfo.xml /app/share/metainfo/io.github.charly.fotos.metainfo.xml
