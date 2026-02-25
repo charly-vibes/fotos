@@ -10,7 +10,8 @@ use imageproc::drawing::{
 };
 use imageproc::rect::Rect;
 use serde::{Deserialize, Serialize};
-use std::io::Cursor;
+use std::fs::File;
+use std::io::{BufWriter, Cursor};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -49,7 +50,7 @@ pub struct Annotation {
 pub fn save_image(
     image_id: String,
     annotations: Vec<Annotation>,
-    _format: String,
+    format: String,
     path: String,
     store: tauri::State<'_, ImageStore>,
 ) -> Result<String, String> {
@@ -97,18 +98,20 @@ pub fn save_image(
             .map_err(|e| format!("Failed to create directory: {}", e))?;
     }
 
-    composite
-        .save(&save_path)
-        .map_err(|e| format!("Failed to save image: {}", e))?;
+    let fmt = detect_format(&save_path, &format);
+    write_image_to_file(composite, &save_path, fmt, JPEG_QUALITY_DEFAULT)?;
 
     Ok(save_path.to_string_lossy().to_string())
 }
 
-/// Composite annotations onto an image and return as a base64-encoded PNG.
+/// Composite annotations onto an image and return as a base64-encoded image.
+///
+/// `format` controls the output encoding: `"png"` (default), `"jpeg"`, or `"webp"`.
 #[tauri::command]
 pub fn composite_image(
     image_id: String,
     annotations: Vec<Annotation>,
+    format: Option<String>,
     store: tauri::State<'_, ImageStore>,
 ) -> Result<String, String> {
     let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {}", e))?;
@@ -123,12 +126,11 @@ pub fn composite_image(
         composite_annotation(&mut composite, anno);
     }
 
-    let mut buf = Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgba8(composite)
-        .write_to(&mut buf, image::ImageFormat::Png)
-        .map_err(|e| format!("Failed to encode image: {}", e))?;
+    let hint = format.as_deref().unwrap_or("png");
+    let fmt = format_from_hint(hint);
+    let bytes = encode_to_bytes(composite, fmt, JPEG_QUALITY_DEFAULT)?;
 
-    Ok(base64::engine::general_purpose::STANDARD.encode(buf.into_inner()))
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
 }
 
 #[tauri::command]
@@ -218,6 +220,72 @@ pub async fn import_annotations(app: tauri::AppHandle) -> Result<Vec<Annotation>
         std::fs::read_to_string(&path).map_err(|e| format!("read error: {e}"))?;
 
     serde_json::from_str(&content).map_err(|e| format!("invalid JSON: {e}"))
+}
+
+// ── Image encoding helpers ────────────────────────────────────────────────────
+
+/// Default JPEG quality (matches `CaptureSettings::jpeg_quality` default).
+const JPEG_QUALITY_DEFAULT: u8 = 85;
+
+/// Map a format hint string to an `ImageFormat`.
+fn format_from_hint(hint: &str) -> image::ImageFormat {
+    match hint.to_ascii_lowercase().as_str() {
+        "jpeg" | "jpg" => image::ImageFormat::Jpeg,
+        "webp" => image::ImageFormat::WebP,
+        _ => image::ImageFormat::Png,
+    }
+}
+
+/// Detect the output format from the file extension, falling back to `hint`.
+fn detect_format(path: &PathBuf, hint: &str) -> image::ImageFormat {
+    image::ImageFormat::from_path(path).unwrap_or_else(|_| format_from_hint(hint))
+}
+
+/// Encode `img` to bytes in the requested format.
+///
+/// JPEG strips the alpha channel (JPEG does not support transparency).
+fn encode_to_bytes(
+    img: image::RgbaImage,
+    fmt: image::ImageFormat,
+    jpeg_quality: u8,
+) -> Result<Vec<u8>, String> {
+    let mut buf = Cursor::new(Vec::new());
+    match fmt {
+        image::ImageFormat::Jpeg => {
+            let rgb = image::DynamicImage::ImageRgba8(img).to_rgb8();
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, jpeg_quality)
+                .encode_image(&rgb)
+                .map_err(|e| format!("Failed to encode JPEG: {e}"))?;
+        }
+        _ => {
+            image::DynamicImage::ImageRgba8(img)
+                .write_to(&mut buf, fmt)
+                .map_err(|e| format!("Failed to encode image: {e}"))?;
+        }
+    }
+    Ok(buf.into_inner())
+}
+
+/// Write `img` directly to a file with the given format and JPEG quality.
+fn write_image_to_file(
+    img: image::RgbaImage,
+    path: &PathBuf,
+    fmt: image::ImageFormat,
+    jpeg_quality: u8,
+) -> Result<(), String> {
+    let file = File::create(path).map_err(|e| format!("Failed to create file: {e}"))?;
+    let mut w = BufWriter::new(file);
+    match fmt {
+        image::ImageFormat::Jpeg => {
+            let rgb = image::DynamicImage::ImageRgba8(img).to_rgb8();
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut w, jpeg_quality)
+                .encode_image(&rgb)
+                .map_err(|e| format!("Failed to encode JPEG: {e}"))
+        }
+        _ => image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut w, fmt)
+            .map_err(|e| format!("Failed to encode image: {e}")),
+    }
 }
 
 // ── Compositing dispatch ──────────────────────────────────────────────────────
@@ -842,6 +910,64 @@ mod tests {
         assert_eq!(anno.fill_color.as_deref(), Some("transparent"));
         assert_eq!(anno.stroke_width, Some(2.0));
         assert_eq!(anno.opacity, Some(0.8));
+    }
+
+    // ── Format detection ──────────────────────────────────────────────────────
+
+    #[test]
+    fn format_from_hint_jpeg() {
+        assert_eq!(format_from_hint("jpeg"), image::ImageFormat::Jpeg);
+        assert_eq!(format_from_hint("jpg"), image::ImageFormat::Jpeg);
+        assert_eq!(format_from_hint("JPEG"), image::ImageFormat::Jpeg);
+    }
+
+    #[test]
+    fn format_from_hint_webp() {
+        assert_eq!(format_from_hint("webp"), image::ImageFormat::WebP);
+    }
+
+    #[test]
+    fn format_from_hint_png_fallback() {
+        assert_eq!(format_from_hint("png"), image::ImageFormat::Png);
+        assert_eq!(format_from_hint("unknown"), image::ImageFormat::Png);
+    }
+
+    #[test]
+    fn detect_format_prefers_extension() {
+        let p = PathBuf::from("/tmp/foo.jpg");
+        assert_eq!(detect_format(&p, "png"), image::ImageFormat::Jpeg);
+        let p = PathBuf::from("/tmp/bar.webp");
+        assert_eq!(detect_format(&p, "png"), image::ImageFormat::WebP);
+    }
+
+    #[test]
+    fn detect_format_falls_back_to_hint() {
+        let p = PathBuf::from("/tmp/no_extension");
+        assert_eq!(detect_format(&p, "jpeg"), image::ImageFormat::Jpeg);
+        assert_eq!(detect_format(&p, "webp"), image::ImageFormat::WebP);
+    }
+
+    // ── encode_to_bytes ───────────────────────────────────────────────────────
+
+    #[test]
+    fn encode_to_bytes_png_has_png_magic() {
+        let img = RgbaImage::from_pixel(8, 8, Rgba([255, 0, 0, 255]));
+        let bytes = encode_to_bytes(img, image::ImageFormat::Png, 85).unwrap();
+        assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n", "should start with PNG magic");
+    }
+
+    #[test]
+    fn encode_to_bytes_jpeg_has_jpeg_magic() {
+        let img = RgbaImage::from_pixel(8, 8, Rgba([255, 0, 0, 255]));
+        let bytes = encode_to_bytes(img, image::ImageFormat::Jpeg, 85).unwrap();
+        assert_eq!(&bytes[..2], b"\xff\xd8", "should start with JPEG SOI marker");
+    }
+
+    #[test]
+    fn encode_to_bytes_webp_has_riff_magic() {
+        let img = RgbaImage::from_pixel(8, 8, Rgba([0, 128, 0, 255]));
+        let bytes = encode_to_bytes(img, image::ImageFormat::WebP, 85).unwrap();
+        assert_eq!(&bytes[..4], b"RIFF", "should start with RIFF header");
     }
 
     #[test]
