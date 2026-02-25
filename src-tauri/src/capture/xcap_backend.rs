@@ -4,7 +4,7 @@
 /// without requiring a portal.
 use anyhow::Result;
 use image::{DynamicImage, ImageBuffer, Rgba};
-use xcap::Monitor;
+use xcap::{Monitor, Window};
 
 pub async fn capture_fullscreen() -> Result<DynamicImage> {
     // Run xcap in a blocking task to avoid nested runtime issues
@@ -62,12 +62,33 @@ pub async fn capture_fullscreen() -> Result<DynamicImage> {
     .map_err(|e| anyhow::anyhow!("Task join error: {}", e))?
 }
 
-pub async fn capture_monitor(_index: u32) -> Result<image::DynamicImage> {
-    // TODO: capture specific monitor by index
-    anyhow::bail!("xcap monitor capture not yet implemented")
+pub async fn capture_monitor(index: u32) -> Result<DynamicImage> {
+    tokio::task::spawn_blocking(move || {
+        let monitors = Monitor::all()?;
+        let monitor = monitors
+            .into_iter()
+            .nth(index as usize)
+            .ok_or_else(|| anyhow::anyhow!("Monitor index {} out of range", index))?;
+        let image = monitor.capture_image()?;
+        Ok(DynamicImage::ImageRgba8(image))
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("Task join error: {}", e))?
 }
 
-pub async fn capture_window(_window_id: u64) -> Result<image::DynamicImage> {
-    // TODO: capture specific window
-    anyhow::bail!("xcap window capture not yet implemented")
+pub async fn capture_window(window_id: u32) -> Result<DynamicImage> {
+    tokio::task::spawn_blocking(move || {
+        let windows = Window::all()?;
+        let window = windows
+            .into_iter()
+            .find(|w| w.id().ok() == Some(window_id))
+            .ok_or_else(|| anyhow::anyhow!("No window found with id {}", window_id))?;
+        if window.is_minimized()? {
+            anyhow::bail!("Window {} is minimized and cannot be captured", window_id);
+        }
+        let image = window.capture_image()?;
+        Ok(DynamicImage::ImageRgba8(image))
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("Task join error: {}", e))?
 }

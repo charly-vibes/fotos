@@ -10,7 +10,12 @@ AI-powered screenshot capture, annotation, and analysis tool built with Tauri 2.
 - Copy to clipboard and Save / Save As with native file-chooser dialog (Wayland portal)
 - Toast notifications for copy, save, and save-as outcomes
 - AI-powered OCR (Tesseract), PII auto-detection and blur, LLM vision analysis
-- MCP server (`fotos-mcp`) for AI agent integration (Claude Desktop, Cursor, etc.)
+- MCP server (`fotos-mcp`) for AI agent integration:
+    - **Autonomous Debugging**: Let agents "see" and fix errors.
+    - **Accessibility Auditing**: Automate WCAG compliance checks.
+    - **Privacy Redaction**: Automatically blur PII before sharing.
+    - **Legacy Scraping**: Extract data from UI-only applications.
+    - **Tutorial Generation**: Create annotated guides programmatically.
 - System tray icon for quick capture access
 - Structured logging via `RUST_LOG`
 - Vanilla JS/HTML/CSS frontend with HTML5 Canvas — no web frameworks

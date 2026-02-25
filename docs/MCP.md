@@ -62,6 +62,50 @@ Once the server is configured, you can tell Claude:
 - "Describe the UI in screenshot `abc-123` using the `describe_ui` prompt."
 - "Create a bug report for screenshot `xyz-789` using the `generate_bug_report` prompt."
 
+## Use Case Guides
+
+These guides demonstrate how to combine Fotos MCP tools and prompts for common AI-assisted workflows.
+
+### 1. Autonomous Debugging
+Help your AI agent "see" and fix code errors in real-time.
+
+1. **Capture**: Tell the agent: "Take a screenshot of my terminal showing the failing test output."
+2. **Analyze**: The agent uses `ocr_screenshot` to read the error message.
+3. **Report**: Use the `generate_bug_report` prompt: "Analyze the error in screenshot `xyz` and generate a bug report."
+4. **Fix**: The agent now has the full visual context (including logs that might not have been copied to the clipboard) to propose a fix.
+
+### 2. Automated UI/UX & Accessibility Auditing
+Ensure your UI meets design standards and WCAG accessibility guidelines.
+
+1. **Capture**: "Capture a screenshot of the new login screen."
+2. **Audit**: Use the `accessibility_audit` prompt: "Audit the login screen screenshot for accessibility issues."
+3. **Feedback**: The agent will identify issues like low contrast, missing alt-text indicators, and touch target sizes.
+4. **Iterate**: The agent can then suggest CSS or HTML changes to fix the identified problems.
+
+### 3. Privacy-Preserving Technical Support
+Safely share logs or UI states with AI agents without leaking secrets.
+
+1. **Capture**: "Capture a screenshot of my current AWS console window."
+2. **Redact**: Tell the agent: "Run `auto_redact_pii` on the screenshot to blur all sensitive information."
+3. **Confirm**: The agent will return the redacted image and a list of blurred items (e.g., "email", "api_key").
+4. **Assist**: You can now safely ask the agent for help with the console configuration, knowing your secrets are hidden.
+
+### 4. Legacy System "API-ification"
+Scrape data from old applications that don't have modern export functions.
+
+1. **Capture**: "Take a screenshot of the legacy CRM application window."
+2. **Extract**: "Run `ocr_screenshot` on the CRM screenshot."
+3. **Transform**: Ask the agent: "Convert the OCR results from the CRM screenshot into a structured JSON list of customers and their last contact dates."
+4. **Utilize**: The agent can then process this data or upload it to a modern database.
+
+### 5. Automated Documentation & Tutorial Generation
+Create professional, annotated step-by-step guides for users.
+
+1. **Capture**: "Capture a series of screenshots as I perform a password reset."
+2. **Annotate**: Tell the agent: "Use `annotate_screenshot` to add red boxes around the 'Reset Password' button and the email input field in these screenshots."
+3. **Number**: "Add step-number annotations (1, 2, 3) to the key actions in each image."
+4. **Draft**: "Generate a Markdown tutorial using these annotated screenshots to explain the password reset process."
+
 ## Architecture
 
 `fotos-mcp` is a stateless binary that communicates with the main Fotos application via an IPC bridge:

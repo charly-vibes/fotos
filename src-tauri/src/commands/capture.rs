@@ -48,11 +48,11 @@ pub struct WindowInfo {
 pub async fn take_screenshot(
     mode: String,
     monitor: Option<u32>,
+    window_id: Option<u32>,
     store: tauri::State<'_, ImageStore>,
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
 ) -> Result<ScreenshotResponse, String> {
-    let _ = monitor;
     tracing::info!("take_screenshot: mode={mode}");
 
     let image = match mode.as_str() {
@@ -90,16 +90,43 @@ pub async fn take_screenshot(
 
             result?
         }
+        "monitor" => {
+            let index = monitor.ok_or("monitor index required for mode 'monitor'")?;
+            tracing::info!("take_screenshot: monitor index={index}");
+
+            let _ = window.hide();
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+            let result = crate::capture::xcap_backend::capture_monitor(index)
+                .await
+                .map_err(|e| {
+                    tracing::error!("take_screenshot: monitor capture failed: {e}");
+                    format!("Monitor capture failed: {}", e)
+                });
+
+            let _ = window.show();
+            let _ = window.set_focus();
+
+            result?
+        }
+        "window" => {
+            let wid = window_id.ok_or("window_id required for mode 'window'")?;
+            tracing::info!("take_screenshot: window_id={wid}");
+
+            crate::capture::xcap_backend::capture_window(wid)
+                .await
+                .map_err(|e| {
+                    tracing::error!("take_screenshot: window capture failed: {e}");
+                    format!("Window capture failed: {}", e)
+                })?
+        }
         "region" => {
             return Err(
                 "Region capture is handled in-app; use fullscreen + crop_image".into(),
             );
         }
         other => {
-            return Err(format!(
-                "Mode '{}' not yet implemented",
-                other
-            ));
+            return Err(format!("Unknown capture mode '{}'", other));
         }
     };
     tracing::info!("take_screenshot: image captured ({}x{})", image.width(), image.height());
