@@ -4,12 +4,13 @@ AI-powered screenshot capture, annotation, and analysis tool built with Tauri 2.
 
 ## Features
 
-- Screenshot capture (fullscreen, region) on Linux Wayland via XDG portal and X11
+- Screenshot capture (fullscreen, region, monitor, window) on Linux Wayland/X11 and Windows
 - Annotation tools: arrow, rectangle, ellipse, text, blur, step numbers, freehand, highlight, crop
 - Zoom controls and fit-to-page for precise annotation work
 - Copy to clipboard and Save / Save As with native file-chooser dialog (Wayland portal)
 - Toast notifications for copy, save, and save-as outcomes
 - AI-powered OCR (Tesseract), PII auto-detection and blur, LLM vision analysis
+- Secure API key management via the Settings modal (⚙): keys stored in the OS keychain (GNOME Keyring, KWallet), never in config files or localStorage
 - MCP server (`fotos-mcp`) for AI agent integration:
     - **Autonomous Debugging**: Let agents "see" and fix errors.
     - **Accessibility Auditing**: Automate WCAG compliance checks.
@@ -63,11 +64,12 @@ Fotos is currently in active development (**tracer-bullet** project, **implement
 
 | Component | Status | Implementation Details |
 |---|---|---|
-| **Capture** | Partial | Fullscreen capture on Linux (Wayland portal & X11) and Windows (xcap). |
+| **Capture** | Partial | Fullscreen, monitor (by index), and window (by id) capture on Linux and Windows. Region capture via in-app crop. |
 | **Annotation** | Partial | Canvas engine with zoom/pan and history (undo/redo). Selection tool supports move/resize. |
 | **AI Features** | Partial | OCR (Tesseract) and PII detection/auto-blur implemented. LLM vision is in progress. |
 | **MCP Server** | Partial | Prompts are fully implemented. Tools and Resources are currently stubs. |
-| **UI Shell** | Stable | Toolbar, canvas layers, and basic panels are functional. |
+| **UI Shell** | Stable | Toolbar, canvas layers, basic panels, and Settings modal are functional. |
+| **API Keys** | Stable | Stored in OS keychain via Settings (⚙). Supports Anthropic, OpenAI, and Gemini. |
 
 See [docs/MCP.md](docs/MCP.md) for details on AI agent integration.
 
@@ -76,7 +78,6 @@ See [docs/MCP.md](docs/MCP.md) for details on AI agent integration.
 Key features currently in the works (tracked via `beads`):
 
 - **LLM Vision Integration**: Support for Claude, OpenAI, Gemini, and local Ollama.
-- **Enhanced Capture**: Monitor and window enumeration and capture modes.
 - **Full MCP Support**: Implement all 6 MCP tools and resources with an IPC bridge to the main app.
 - **Annotation Tools**: Complete the implementation of all 9 planned drawing tools.
 - **Theme System**: Full support for light, dark, and system themes via CSS custom properties.

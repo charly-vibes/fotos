@@ -2,6 +2,19 @@
 
 All notable changes to Fotos are documented here.
 
+## [Unreleased]
+
+### Added
+- **Settings modal** (⚙ button in toolbar): central place for configuration. Open with the gear icon or `Escape` to close.
+- **API key management**: enter and store API keys for Anthropic (Claude), OpenAI (GPT-4o), and Google (Gemini) directly in the Settings modal. Keys are stored in the OS keychain (GNOME Keyring, KWallet, Windows Credential Manager) via the `keyring` crate — never saved in config files, `localStorage`, or the Tauri store.
+  - **Show/Hide toggle** on each password field.
+  - **Test** button: validates the key by making a lightweight authenticated request to the provider's models endpoint. Reports success or the HTTP error code.
+  - **Delete** button: removes the key from the keychain immediately.
+  - Key status (masked last-4 characters, "No key set", "Connected", or error) shown inline.
+- **Monitor capture** (`mode: "monitor"`): capture a specific monitor by index. Enumerates monitors via `xcap::Monitor::all()`.
+- **Window capture** (`mode: "window"`): capture a specific window by id. Enumerates windows via `xcap::Window::all()`. Minimized windows are rejected with a clear error.
+- `list_monitors` and `list_windows` Tauri commands: return id, name, position, size, and primary flag (monitors) or id, title, app name, and geometry (windows).
+
 ## [0.2.0] - 2026-02-24
 
 ### Added
