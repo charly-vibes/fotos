@@ -132,8 +132,200 @@
         <button class="modal-close" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
-        <section class="settings-section">
-          <h3>API Keys</h3>
+        <nav class="settings-tabs" role="tablist">
+          <button class="settings-tab-btn active" data-tab="capture" role="tab">Capture</button>
+          <button class="settings-tab-btn" data-tab="annotation" role="tab">Annotation</button>
+          <button class="settings-tab-btn" data-tab="ai" role="tab">AI</button>
+          <button class="settings-tab-btn" data-tab="ui" role="tab">Interface</button>
+          <button class="settings-tab-btn" data-tab="keys" role="tab">API Keys</button>
+        </nav>
+
+        <!-- Capture tab -->
+        <div id="tab-capture" class="settings-tab-panel active">
+          <div class="settings-row">
+            <label class="settings-label" for="pref-capture-defaultMode">Default mode</label>
+            <div class="settings-control">
+              <select id="pref-capture-defaultMode">
+                <option value="region">Region</option>
+                <option value="fullscreen">Fullscreen</option>
+                <option value="monitor">Monitor</option>
+                <option value="window">Window</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-capture-defaultFormat">Default format</label>
+            <div class="settings-control">
+              <select id="pref-capture-defaultFormat">
+                <option value="png">PNG</option>
+                <option value="jpg">JPEG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row" id="row-jpeg-quality">
+            <label class="settings-label" for="pref-capture-jpegQuality">JPEG quality</label>
+            <div class="settings-control settings-control--range">
+              <input type="range" id="pref-capture-jpegQuality" min="1" max="100" step="1">
+              <span id="pref-capture-jpegQuality-display">90</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-capture-saveDirectory">Save directory</label>
+            <div class="settings-control">
+              <input type="text" id="pref-capture-saveDirectory" placeholder="~/Pictures/Fotos">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label settings-label--checkbox">
+              <input type="checkbox" id="pref-capture-copyToClipboard">
+              Copy to clipboard after capture
+            </label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label settings-label--checkbox">
+              <input type="checkbox" id="pref-capture-includeMouseCursor">
+              Include mouse cursor
+            </label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-capture-delayMs">Capture delay (ms)</label>
+            <div class="settings-control">
+              <input type="number" id="pref-capture-delayMs" min="0" max="10000" step="100">
+            </div>
+          </div>
+        </div>
+
+        <!-- Annotation tab -->
+        <div id="tab-annotation" class="settings-tab-panel">
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-strokeColor">Stroke color</label>
+            <div class="settings-control">
+              <input type="color" id="pref-annotation-strokeColor">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-strokeWidth">Stroke width (px)</label>
+            <div class="settings-control">
+              <input type="number" id="pref-annotation-strokeWidth" min="0.5" max="50" step="0.5">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-fontSize">Font size (px)</label>
+            <div class="settings-control">
+              <input type="number" id="pref-annotation-fontSize" min="6" max="200" step="1">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-fontFamily">Font family</label>
+            <div class="settings-control">
+              <input type="text" id="pref-annotation-fontFamily" placeholder="sans-serif">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-stepColor">Step number color</label>
+            <div class="settings-control">
+              <input type="color" id="pref-annotation-stepColor">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-stepSize">Step number size (px)</label>
+            <div class="settings-control">
+              <input type="number" id="pref-annotation-stepSize" min="12" max="120" step="1">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-annotation-blurRadius">Blur radius (px)</label>
+            <div class="settings-control">
+              <input type="number" id="pref-annotation-blurRadius" min="1" max="100" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- AI tab -->
+        <div id="tab-ai" class="settings-tab-panel">
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-ocrLanguage">OCR language</label>
+            <div class="settings-control">
+              <select id="pref-ai-ocrLanguage">
+                <option value="eng">English (eng)</option>
+                <option value="fra">French (fra)</option>
+                <option value="deu">German (deu)</option>
+                <option value="spa">Spanish (spa)</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-defaultProvider">Default LLM provider</label>
+            <div class="settings-control">
+              <select id="pref-ai-defaultProvider">
+                <option value="claude">Claude (Anthropic)</option>
+                <option value="openai">GPT-4o (OpenAI)</option>
+                <option value="gemini">Gemini (Google)</option>
+                <option value="ollama">Ollama (local)</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-claudeModel">Claude model</label>
+            <div class="settings-control">
+              <input type="text" id="pref-ai-claudeModel" placeholder="claude-sonnet-4-20250514">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-openaiModel">OpenAI model</label>
+            <div class="settings-control">
+              <input type="text" id="pref-ai-openaiModel" placeholder="gpt-4o">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-geminiModel">Gemini model</label>
+            <div class="settings-control">
+              <input type="text" id="pref-ai-geminiModel" placeholder="gemini-2.0-flash">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-ollamaUrl">Ollama URL</label>
+            <div class="settings-control">
+              <input type="url" id="pref-ai-ollamaUrl" placeholder="http://localhost:11434">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ai-ollamaModel">Ollama model</label>
+            <div class="settings-control">
+              <input type="text" id="pref-ai-ollamaModel" placeholder="llava:7b">
+            </div>
+          </div>
+        </div>
+
+        <!-- Interface tab -->
+        <div id="tab-ui" class="settings-tab-panel">
+          <div class="settings-row">
+            <label class="settings-label" for="pref-ui-theme">Theme</label>
+            <div class="settings-control">
+              <select id="pref-ui-theme">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label settings-label--checkbox">
+              <input type="checkbox" id="pref-ui-showAiPanel">
+              Show AI results panel
+            </label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label settings-label--checkbox">
+              <input type="checkbox" id="pref-ui-showStatusBar">
+              Show status bar
+            </label>
+          </div>
+        </div>
+
+        <!-- API Keys tab -->
+        <div id="tab-keys" class="settings-tab-panel">
           <p class="settings-hint">Keys are stored in your OS keychain and never saved in plain text.</p>
 
           <div class="api-key-row" data-provider="anthropic">
@@ -189,9 +381,10 @@
               </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
       <div class="modal-footer">
+        <button class="btn-reset-defaults">Reset to Defaults</button>
         <button class="btn-close-settings">Close</button>
       </div>
     </div>

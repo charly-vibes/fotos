@@ -151,13 +151,13 @@ async fn handle_connection(mut stream: UnixStream, app: tauri::AppHandle) -> Res
 /// Currently handles only `get_settings`. Additional commands are added in
 /// fotos-0j0 when the MCP tool implementations are wired up.
 async fn dispatch(
-    _app: &tauri::AppHandle,
+    app: &tauri::AppHandle,
     command: &str,
     _params: Value,
 ) -> anyhow::Result<Value> {
     match command {
         "get_settings" => {
-            let settings = crate::commands::settings::get_settings()
+            let settings = crate::commands::settings::get_settings(app.clone())
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             Ok(serde_json::to_value(settings)?)
         }

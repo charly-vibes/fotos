@@ -592,3 +592,143 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Settings tabs */
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-tab-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 4px 4px 0 0;
+}
+
+.settings-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.settings-tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.settings-tab-panel {
+  display: none;
+}
+
+.settings-tab-panel.active {
+  display: block;
+}
+
+/* Settings form rows */
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  flex: 0 0 160px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-label--checkbox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.settings-control {
+  flex: 1;
+}
+
+.settings-control select,
+.settings-control input[type="text"],
+.settings-control input[type="number"],
+.settings-control input[type="url"] {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.settings-control select:focus,
+.settings-control input[type="text"]:focus,
+.settings-control input[type="number"]:focus,
+.settings-control input[type="url"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-control input[type="color"] {
+  width: 40px;
+  height: 28px;
+  padding: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.settings-control--range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-control--range input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.settings-control--range span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 28px;
+  text-align: right;
+}
+
+.btn-reset-defaults {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: auto;
+}
+
+.btn-reset-defaults:hover {
+  border-color: #f44336;
+  color: #f44336;
+}

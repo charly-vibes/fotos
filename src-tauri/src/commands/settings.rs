@@ -1,7 +1,11 @@
 use reqwest::header;
 use serde::{Deserialize, Serialize};
+use tauri_plugin_store::StoreExt;
+
+const STORE_PATH: &str = "prefs.json";
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CaptureSettings {
     pub default_mode: String,
     pub include_mouse_cursor: bool,
@@ -15,7 +19,7 @@ pub struct CaptureSettings {
 impl Default for CaptureSettings {
     fn default() -> Self {
         Self {
-            default_mode: "fullscreen".to_string(),
+            default_mode: "region".to_string(),
             save_directory: "~/Pictures/Fotos".to_string(),
             default_format: "png".to_string(),
             jpeg_quality: 90,
@@ -27,6 +31,7 @@ impl Default for CaptureSettings {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AnnotationSettings {
     pub default_stroke_color: String,
     pub default_stroke_width: f64,
@@ -52,6 +57,7 @@ impl Default for AnnotationSettings {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AiSettings {
     pub ocr_language: String,
     pub default_llm_provider: String,
@@ -68,15 +74,16 @@ impl Default for AiSettings {
             ocr_language: "eng".to_string(),
             default_llm_provider: "claude".to_string(),
             ollama_url: "http://localhost:11434".to_string(),
-            ollama_model: "llama3.2-vision".to_string(),
-            claude_model: "claude-sonnet-4-5".to_string(),
+            ollama_model: "llava:7b".to_string(),
+            claude_model: "claude-sonnet-4-20250514".to_string(),
             openai_model: "gpt-4o".to_string(),
-            gemini_model: "gemini-2.0-flash-exp".to_string(),
+            gemini_model: "gemini-2.0-flash".to_string(),
         }
     }
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UiSettings {
     pub theme: String,
     pub show_ai_panel: bool,
@@ -101,15 +108,48 @@ pub struct Settings {
     pub ui: UiSettings,
 }
 
-#[tauri::command]
-pub fn get_settings() -> Result<Settings, String> {
-    // Tracer-bullet: return hardcoded defaults (no persistence)
-    Ok(Settings::default())
+fn load_section<T: serde::de::DeserializeOwned + Default>(
+    store: &tauri_plugin_store::Store<tauri::Wry>,
+    key: &str,
+) -> T {
+    store
+        .get(key)
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default()
 }
 
 #[tauri::command]
-pub fn set_settings(_settings: Settings) -> Result<(), String> {
-    // Tracer-bullet: no-op (no persistence)
+pub fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
+    let store = app.store(STORE_PATH).map_err(|e| format!("Store error: {e}"))?;
+    Ok(Settings {
+        capture: load_section(&store, "capture"),
+        annotation: load_section(&store, "annotation"),
+        ai: load_section(&store, "ai"),
+        ui: load_section(&store, "ui"),
+    })
+}
+
+#[tauri::command]
+pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
+    let store = app.store(STORE_PATH).map_err(|e| format!("Store error: {e}"))?;
+    store.set(
+        "capture",
+        serde_json::to_value(&settings.capture).map_err(|e| e.to_string())?,
+    );
+    store.set(
+        "annotation",
+        serde_json::to_value(&settings.annotation).map_err(|e| e.to_string())?,
+    );
+    store.set(
+        "ai",
+        serde_json::to_value(&settings.ai).map_err(|e| e.to_string())?,
+    );
+    store.set(
+        "ui",
+        serde_json::to_value(&settings.ui).map_err(|e| e.to_string())?,
+    );
+    store.set("_schemaVersion", serde_json::json!(1_u64));
+    store.save().map_err(|e| format!("Save error: {e}"))?;
     Ok(())
 }
 
