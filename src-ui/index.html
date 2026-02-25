@@ -80,6 +80,12 @@
       <button data-action="save" title="Save (Ctrl+S)">💾</button>
       <button data-action="save-as" title="Save As">📁</button>
     </div>
+
+    <div class="separator"></div>
+
+    <div class="tool-group">
+      <button data-action="open-settings" title="Settings">⚙</button>
+    </div>
   </header>
 
   <!-- Main canvas area -->
@@ -115,6 +121,80 @@
   <div id="region-picker-overlay" class="hidden">
     <canvas id="region-picker-canvas"></canvas>
     <p id="region-picker-hint">Drag to select · Enter to confirm · Esc to cancel</p>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="settings-title">Settings</h2>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <section class="settings-section">
+          <h3>API Keys</h3>
+          <p class="settings-hint">Keys are stored in your OS keychain and never saved in plain text.</p>
+
+          <div class="api-key-row" data-provider="anthropic">
+            <div class="api-key-label">
+              <span class="provider-name">Anthropic (Claude)</span>
+              <span class="key-status key-status--missing">No key set</span>
+            </div>
+            <div class="api-key-controls">
+              <div class="api-key-input-wrap">
+                <input type="password" class="api-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+                <button class="btn-show-hide">Show</button>
+              </div>
+              <div class="api-key-actions">
+                <button class="btn-save-key">Save</button>
+                <button class="btn-test-key">Test</button>
+                <button class="btn-delete-key">Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="api-key-row" data-provider="openai">
+            <div class="api-key-label">
+              <span class="provider-name">OpenAI (GPT-4o)</span>
+              <span class="key-status key-status--missing">No key set</span>
+            </div>
+            <div class="api-key-controls">
+              <div class="api-key-input-wrap">
+                <input type="password" class="api-key-input" placeholder="sk-..." autocomplete="off" spellcheck="false">
+                <button class="btn-show-hide">Show</button>
+              </div>
+              <div class="api-key-actions">
+                <button class="btn-save-key">Save</button>
+                <button class="btn-test-key">Test</button>
+                <button class="btn-delete-key">Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="api-key-row" data-provider="gemini">
+            <div class="api-key-label">
+              <span class="provider-name">Google (Gemini)</span>
+              <span class="key-status key-status--missing">No key set</span>
+            </div>
+            <div class="api-key-controls">
+              <div class="api-key-input-wrap">
+                <input type="password" class="api-key-input" placeholder="AIza..." autocomplete="off" spellcheck="false">
+                <button class="btn-show-hide">Show</button>
+              </div>
+              <div class="api-key-actions">
+                <button class="btn-save-key">Save</button>
+                <button class="btn-test-key">Test</button>
+                <button class="btn-delete-key">Delete</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-close-settings">Close</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="js/app.js"></script>

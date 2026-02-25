@@ -179,6 +179,9 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::set_settings,
             commands::settings::set_api_key,
+            commands::settings::get_api_key,
+            commands::settings::delete_api_key,
+            commands::settings::test_api_key,
         ])
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::Destroyed = event {

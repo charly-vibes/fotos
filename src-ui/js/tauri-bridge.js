@@ -7,8 +7,8 @@ export async function ping() {
   return invoke('ping');
 }
 
-export async function takeScreenshot(mode, monitor = null) {
-  return invoke('take_screenshot', { mode, monitor });
+export async function takeScreenshot(mode, monitor = null, windowId = null) {
+  return invoke('take_screenshot', { mode, monitor, windowId });
 }
 
 export async function listMonitors() {
@@ -71,4 +71,16 @@ export async function setSettings(settings) {
 
 export async function setApiKey(provider, key) {
   return invoke('set_api_key', { provider, key });
+}
+
+export async function getApiKey(provider) {
+  return invoke('get_api_key', { provider });
+}
+
+export async function deleteApiKey(provider) {
+  return invoke('delete_api_key', { provider });
+}
+
+export async function testApiKey(provider) {
+  return invoke('test_api_key', { provider });
 }

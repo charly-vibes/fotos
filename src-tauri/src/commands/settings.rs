@@ -1,3 +1,4 @@
+use reqwest::header;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -113,7 +114,95 @@ pub fn set_settings(_settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn set_api_key(_provider: String, _key: String) -> Result<(), String> {
-    // Tracer-bullet: no-op (no keychain integration)
-    Ok(())
+pub fn set_api_key(provider: String, key: String) -> Result<(), String> {
+    crate::credentials::store_api_key(&provider, &key)
+        .map_err(|e| format!("Failed to store API key: {e}"))
+}
+
+#[tauri::command]
+pub fn get_api_key(provider: String) -> Result<String, String> {
+    match crate::credentials::get_api_key(&provider) {
+        Ok(key) => {
+            // Return masked form: 8 bullets + last 4 chars (or all bullets if short)
+            let masked = if key.len() > 4 {
+                format!("\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}{}", &key[key.len() - 4..])
+            } else {
+                "\u{2022}".repeat(key.len())
+            };
+            Ok(masked)
+        }
+        // No entry = not an error, just no key set
+        Err(_) => Ok(String::new()),
+    }
+}
+
+#[tauri::command]
+pub fn delete_api_key(provider: String) -> Result<(), String> {
+    match crate::credentials::delete_api_key(&provider) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            // Treat missing entry as success
+            if matches!(e.downcast_ref::<keyring::Error>(), Some(keyring::Error::NoEntry)) {
+                Ok(())
+            } else {
+                Err(format!("Failed to delete API key: {e}"))
+            }
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn test_api_key(provider: String) -> Result<(), String> {
+    let key = crate::credentials::get_api_key(&provider)
+        .map_err(|_| format!("No API key configured for '{provider}'"))?;
+    if key.is_empty() {
+        return Err(format!("No API key configured for '{provider}'"));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("HTTP client error: {e}"))?;
+
+    let status = match provider.as_str() {
+        "anthropic" => {
+            client
+                .get("https://api.anthropic.com/v1/models")
+                .header("x-api-key", &key)
+                .header("anthropic-version", "2023-06-01")
+                .send()
+                .await
+                .map_err(|e| format!("Request failed: {e}"))?
+                .status()
+        }
+        "openai" => {
+            client
+                .get("https://api.openai.com/v1/models")
+                .header(header::AUTHORIZATION, format!("Bearer {key}"))
+                .send()
+                .await
+                .map_err(|e| format!("Request failed: {e}"))?
+                .status()
+        }
+        "gemini" => {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1/models?key={key}"
+            );
+            client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| format!("Request failed: {e}"))?
+                .status()
+        }
+        other => return Err(format!("Unknown provider '{other}'")),
+    };
+
+    if status.is_success() {
+        Ok(())
+    } else if status.as_u16() == 401 || status.as_u16() == 403 {
+        Err(format!("Authentication failed ({status}): invalid API key"))
+    } else {
+        Err(format!("API returned unexpected status {status}"))
+    }
 }
