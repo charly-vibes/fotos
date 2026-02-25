@@ -5,6 +5,7 @@
 use anyhow::Result;
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct AppBridge {
     // TODO: hold IPC connection
 }

@@ -1,35 +1,125 @@
 /// MCP server implementation.
 ///
-/// Defines tools, resources, and prompts exposed to MCP hosts.
-/// Delegates actual work to the main Fotos app via IPC bridge.
-#[allow(dead_code)]
+/// Implements the ServerHandler trait from rmcp, providing stub handlers for
+/// tools, resources, and prompts. Concrete implementations come in subsequent
+/// tickets (fotos-0j0, fotos-kxs, fotos-rsw, fotos-d6e).
+use rmcp::{
+    ServerHandler,
+    model::{
+        CallToolRequestParam, CallToolResult, GetPromptRequestParam, GetPromptResult,
+        Implementation, InitializeRequestParam, ListPromptsResult, ListResourcesResult,
+        ListToolsResult, PaginatedRequestParam, ReadResourceRequestParam, ReadResourceResult,
+        ServerCapabilities, ServerInfo,
+    },
+    service::{RequestContext, RoleServer},
+    Error as McpError,
+};
+use tracing::info;
+
+use crate::bridge::AppBridge;
+
+#[derive(Clone)]
 pub struct FotosMcpServer {
-    // TODO: hold IPC connection to main app
+    #[allow(dead_code)]
+    bridge: Option<AppBridge>,
 }
 
-#[allow(dead_code)]
 impl FotosMcpServer {
     pub fn new() -> Self {
-        Self {}
+        Self { bridge: None }
+    }
+}
+
+impl ServerHandler for FotosMcpServer {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo {
+            server_info: Implementation {
+                name: "fotos-mcp".to_owned(),
+                version: env!("CARGO_PKG_VERSION").to_owned(),
+            },
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .enable_prompts()
+                .enable_resources()
+                .build(),
+            instructions: Some(
+                "Fotos MCP server: take and annotate screenshots, run OCR, redact PII.".to_owned(),
+            ),
+            ..Default::default()
+        }
     }
 
-    // Tools:
-    // - take_screenshot
-    // - ocr_screenshot
-    // - annotate_screenshot
-    // - analyze_screenshot
-    // - auto_redact_pii
-    // - list_screenshots
+    async fn initialize(
+        &self,
+        request: InitializeRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ServerInfo, McpError> {
+        info!(
+            client = %request.client_info.name,
+            version = %request.client_info.version,
+            protocol = ?request.protocol_version,
+            "MCP client connected"
+        );
+        Ok(self.get_info())
+    }
 
-    // Resources:
-    // - screenshots://recent
-    // - screenshots://{id}
-    // - screenshots://{id}/ocr
-    // - settings://current
+    async fn list_tools(
+        &self,
+        _request: PaginatedRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, McpError> {
+        // Populated in fotos-0j0
+        Ok(ListToolsResult::default())
+    }
 
-    // Prompts:
-    // - describe_ui
-    // - extract_code
-    // - generate_bug_report
-    // - accessibility_audit
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, McpError> {
+        Err(McpError::invalid_params(
+            format!("unknown tool: {}", request.name),
+            None,
+        ))
+    }
+
+    async fn list_prompts(
+        &self,
+        _request: PaginatedRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, McpError> {
+        // Populated in fotos-kxs
+        Ok(ListPromptsResult::default())
+    }
+
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, McpError> {
+        Err(McpError::invalid_params(
+            format!("unknown prompt: {}", request.name),
+            None,
+        ))
+    }
+
+    async fn list_resources(
+        &self,
+        _request: PaginatedRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, McpError> {
+        // Populated in fotos-rsw
+        Ok(ListResourcesResult::default())
+    }
+
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResult, McpError> {
+        Err(McpError::invalid_params(
+            format!("unknown resource: {}", request.uri),
+            None,
+        ))
+    }
 }
