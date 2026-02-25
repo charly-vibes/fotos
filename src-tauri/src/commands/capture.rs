@@ -63,8 +63,11 @@ pub async fn take_screenshot(
             // Give the compositor a moment to actually hide the window.
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
+            #[cfg(target_os = "linux")]
             let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
+            #[cfg(target_os = "linux")]
             tracing::info!("take_screenshot: in_flatpak={in_flatpak}");
+            #[cfg(target_os = "linux")]
             let result = if in_flatpak {
                 tracing::info!("take_screenshot: routing to portal backend");
                 crate::capture::portal::capture_via_portal()
@@ -74,6 +77,16 @@ pub async fn take_screenshot(
                         format!("Portal capture failed: {}", e)
                     })
             } else {
+                tracing::info!("take_screenshot: routing to xcap backend");
+                crate::capture::xcap_backend::capture_fullscreen()
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("take_screenshot: xcap failed: {e}");
+                        format!("Capture failed: {}", e)
+                    })
+            };
+            #[cfg(not(target_os = "linux"))]
+            let result = {
                 tracing::info!("take_screenshot: routing to xcap backend");
                 crate::capture::xcap_backend::capture_fullscreen()
                     .await

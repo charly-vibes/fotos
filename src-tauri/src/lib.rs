@@ -48,9 +48,6 @@ async fn do_capture_and_emit(
         }
     };
 
-    let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
-    tracing::info!("do_capture_and_emit: in_flatpak={in_flatpak}");
-
     // In Flatpak the portal captures the screen including our window, so hide
     // first regardless of backend so the app doesn't appear in the shot.
     let _ = window.hide();
@@ -59,12 +56,25 @@ async fn do_capture_and_emit(
 
     let image_store = app.state::<capture::ImageStore>();
     let result: Result<commands::capture::ScreenshotResponse, String> = async {
+        #[cfg(target_os = "linux")]
+        let in_flatpak = std::env::var("FLATPAK_ID").is_ok();
+        #[cfg(target_os = "linux")]
+        tracing::info!("do_capture_and_emit: in_flatpak={in_flatpak}");
+
+        #[cfg(target_os = "linux")]
         let image = if in_flatpak {
             tracing::info!("do_capture_and_emit: using portal backend");
             capture::portal::capture_via_portal()
                 .await
                 .map_err(|e| e.to_string())?
         } else {
+            tracing::info!("do_capture_and_emit: using xcap backend");
+            capture::xcap_backend::capture_fullscreen()
+                .await
+                .map_err(|e| e.to_string())?
+        };
+        #[cfg(not(target_os = "linux"))]
+        let image = {
             tracing::info!("do_capture_and_emit: using xcap backend");
             capture::xcap_backend::capture_fullscreen()
                 .await
