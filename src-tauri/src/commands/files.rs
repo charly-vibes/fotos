@@ -1,5 +1,5 @@
 use crate::capture::ImageStore;
-use ab_glyph::{FontVec, PxScale};
+use ab_glyph::{Font as _, FontVec, PxScale, ScaleFont as _};
 use base64::Engine;
 use chrono::Local;
 use directories::UserDirs;
@@ -442,29 +442,28 @@ fn composite_step(composite: &mut image::RgbaImage, anno: &Annotation) {
     let Ok(color) = parse_color(stroke_str) else { return };
 
     draw_filled_circle_mut(composite, (cx, cy), radius, color);
+
+    // Draw the step number centered inside the circle.
+    let step = match anno.step_number {
+        Some(n) => n,
+        None => return,
+    };
+    let font = embedded_font();
+    let text = step.to_string();
+    let font_size = (size as f32 * 0.6).max(8.0);
+    let scale = PxScale { x: font_size, y: font_size };
+    let scaled = font.as_scaled(scale);
+    let text_width: f32 = text.chars().map(|c| scaled.h_advance(font.glyph_id(c))).sum();
+    let ascent = scaled.ascent();
+    let tx = cx - (text_width / 2.0) as i32;
+    let ty = cy - (ascent / 2.0) as i32;
+    draw_text_mut(composite, Rgba([255, 255, 255, 255]), tx, ty, scale, &font, &text);
 }
 
-fn load_system_font() -> Option<FontVec> {
-    let paths = [
-        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/google-noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/abattis-cantarell/Cantarell-Regular.otf",
-        "/usr/share/fonts/cantarell/Cantarell-Regular.otf",
-        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-    ];
-    for path in &paths {
-        if let Ok(data) = std::fs::read(path) {
-            if let Ok(font) = FontVec::try_from_vec(data) {
-                return Some(font);
-            }
-        }
-    }
-    tracing::warn!("No system font found; text annotations will not be composited");
-    None
+fn embedded_font() -> FontVec {
+    static BYTES: &[u8] =
+        include_bytes!("../../fonts/LiberationSans-Regular.ttf");
+    FontVec::try_from_vec(BYTES.to_vec()).expect("embedded font is valid")
 }
 
 fn composite_text(composite: &mut image::RgbaImage, anno: &Annotation) {
@@ -473,8 +472,7 @@ fn composite_text(composite: &mut image::RgbaImage, anno: &Annotation) {
         _ => return,
     };
 
-    let Some(font) = load_system_font() else { return };
-
+    let font = embedded_font();
     let x = anno.x as i32;
     let y = anno.y as i32;
     let font_size = anno.font_size.unwrap_or(20.0) as f32;
