@@ -31,8 +31,8 @@ jobs:
 
       - name: Build Linux binaries
         run: |
-          cargo build --release --locked --manifest-path src-mcp/Cargo.toml --target x86_64-unknown-linux-gnu
-          cargo build --release --locked --manifest-path src-mcp/Cargo.toml --target aarch64-unknown-linux-gnu
+          cargo build --release --manifest-path src-mcp/Cargo.toml --target x86_64-unknown-linux-gnu
+          cargo build --release --manifest-path src-mcp/Cargo.toml --target aarch64-unknown-linux-gnu
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
@@ -64,8 +64,8 @@ jobs:
 
       - name: Build macOS binaries
         run: |
-          cargo build --release --locked --manifest-path src-mcp/Cargo.toml --target x86_64-apple-darwin
-          cargo build --release --locked --manifest-path src-mcp/Cargo.toml --target aarch64-apple-darwin
+          cargo build --release --manifest-path src-mcp/Cargo.toml --target x86_64-apple-darwin
+          cargo build --release --manifest-path src-mcp/Cargo.toml --target aarch64-apple-darwin
 
       - name: Collect prebuilt binaries
         run: |
@@ -94,7 +94,7 @@ jobs:
           key: mcp-windows
 
       - name: Build Windows binary
-        run: cargo build --release --locked --manifest-path src-mcp/Cargo.toml --target x86_64-pc-windows-msvc
+        run: cargo build --release --manifest-path src-mcp/Cargo.toml --target x86_64-pc-windows-msvc
 
       - name: Collect prebuilt binaries
         shell: bash
