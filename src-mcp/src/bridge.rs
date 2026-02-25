@@ -75,7 +75,7 @@ impl AppBridge {
                     })?;
 
             tracing::info!("IPC bridge connected to {}", path.display());
-            return Ok(Self { stream: Arc::new(Mutex::new(stream)) });
+            Ok(Self { stream: Arc::new(Mutex::new(stream)) })
         }
 
         #[cfg(not(unix))]

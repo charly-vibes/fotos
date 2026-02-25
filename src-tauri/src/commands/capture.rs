@@ -5,6 +5,7 @@ use std::io::Cursor;
 use std::sync::Arc;
 use tauri::Emitter;
 use uuid::Uuid;
+use xcap::{Monitor, Window};
 
 #[derive(Serialize, Clone)]
 pub struct ScreenshotResponse {
@@ -23,8 +24,10 @@ struct ScreenshotReadyEvent {
 
 #[derive(Serialize)]
 pub struct MonitorInfo {
-    pub index: u32,
+    pub id: u32,
     pub name: String,
+    pub x: i32,
+    pub y: i32,
     pub width: u32,
     pub height: u32,
     pub is_primary: bool,
@@ -32,9 +35,13 @@ pub struct MonitorInfo {
 
 #[derive(Serialize)]
 pub struct WindowInfo {
-    pub id: u64,
+    pub id: u32,
     pub title: String,
     pub app_name: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[tauri::command]
@@ -176,13 +183,49 @@ pub fn crop_image(
 }
 
 #[tauri::command]
-pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
-    // TODO: enumerate monitors
-    Err("Not yet implemented".into())
+pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
+    tokio::task::spawn_blocking(|| {
+        let monitors =
+            Monitor::all().map_err(|e| format!("Failed to enumerate monitors: {e}"))?;
+        monitors
+            .into_iter()
+            .map(|m| {
+                Ok(MonitorInfo {
+                    id: m.id().map_err(|e| format!("monitor.id: {e}"))?,
+                    name: m.name().map_err(|e| format!("monitor.name: {e}"))?,
+                    x: m.x().map_err(|e| format!("monitor.x: {e}"))?,
+                    y: m.y().map_err(|e| format!("monitor.y: {e}"))?,
+                    width: m.width().map_err(|e| format!("monitor.width: {e}"))?,
+                    height: m.height().map_err(|e| format!("monitor.height: {e}"))?,
+                    is_primary: m.is_primary().map_err(|e| format!("monitor.is_primary: {e}"))?,
+                })
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn list_windows() -> Result<Vec<WindowInfo>, String> {
-    // TODO: enumerate windows
-    Err("Not yet implemented".into())
+pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
+    tokio::task::spawn_blocking(|| {
+        let windows =
+            Window::all().map_err(|e| format!("Failed to enumerate windows: {e}"))?;
+        windows
+            .into_iter()
+            .map(|w| {
+                Ok(WindowInfo {
+                    id: w.id().map_err(|e| format!("window.id: {e}"))?,
+                    title: w.title().map_err(|e| format!("window.title: {e}"))?,
+                    app_name: w.app_name().map_err(|e| format!("window.app_name: {e}"))?,
+                    x: w.x().map_err(|e| format!("window.x: {e}"))?,
+                    y: w.y().map_err(|e| format!("window.y: {e}"))?,
+                    width: w.width().map_err(|e| format!("window.width: {e}"))?,
+                    height: w.height().map_err(|e| format!("window.height: {e}"))?,
+                })
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
