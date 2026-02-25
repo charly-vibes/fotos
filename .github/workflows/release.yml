@@ -136,17 +136,20 @@ jobs:
         run: cargo install just --locked
 
       - name: Build package
-        run: just package deb
+        run: |
+          triple=$(rustc -vV | grep '^host:' | cut -d' ' -f2)
+          touch "src-tauri/fotos-mcp-${triple}"
+          cargo tauri build --bundles deb,appimage
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          path: src-tauri/target/release/bundle/deb/*.deb
+          path: target/release/bundle/deb/*.deb
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          path: target/release/bundle/appimage/*.AppImage
 
   build-windows:
     name: Build fotos (Windows)
