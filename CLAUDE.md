@@ -59,10 +59,30 @@ Phases are a guide, not a gate. Use `wai phase show` / `wai phase next`.
 
 ## Ending a Session
 
-1. Create a handoff: `wai handoff create <project>`
-2. Update issue status: `bd close <id>` for completed work
-3. File new issues for remaining work: `bd create --title="..."`
-4. Commit your changes (handoff + code)
+Before saying "done", run this checklist:
+
+```
+[ ] wai handoff create <project>   # capture context for next session
+[ ] bd close <id>                  # mark completed issues
+[ ] bd sync --from-main            # pull beads updates
+[ ] wai reflect                    # update CLAUDE.md with project patterns (every ~5 sessions)
+[ ] git add <files> && git commit  # commit code + handoff
+```
+
+### Autonomous Loop
+
+One task per session. The resume loop:
+
+1. `wai prime` — orient (shows ⚡ RESUMING if mid-task)
+2. Work on the single task
+3. `wai close` — capture state (run this before every `/clear`)
+4. `git add <files> && git commit`
+5. `/clear` — fresh context
+
+→ Next session: `wai prime` shows RESUMING with exact next steps.
+
+When context reaches ~40%: run `wai close`, then `/clear`.
+Do NOT skip `wai close` — it enables resume detection.
 
 ## Quick Reference
 
@@ -73,6 +93,9 @@ wai add research "notes"      # Add research artifact
 wai add plan "plan"           # Add plan artifact
 wai add design "design"       # Add design artifact
 wai search "query"            # Search across artifacts
+wai why "why use TOML?"       # Ask why (LLM-powered oracle)
+wai why src/config.rs         # Explain a file's history
+wai reflect                   # Synthesize project patterns into CLAUDE.md
 wai handoff create <project>  # Session handoff
 wai phase show                # Current phase
 wai doctor                    # Workspace health
