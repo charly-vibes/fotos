@@ -31,9 +31,11 @@ pub struct BlurRegion {
 
 #[derive(Serialize)]
 pub struct LlmResponse {
-    pub response: String,
+    pub provider: String,
     pub model: String,
+    pub response_text: String,
     pub tokens_used: u32,
+    pub latency_ms: u64,
 }
 
 #[tauri::command]
@@ -244,11 +246,89 @@ pub fn auto_blur_pii(
 }
 
 #[tauri::command]
-pub fn analyze_llm(
-    _image_id: String,
-    _prompt: Option<String>,
-    _provider: String,
+pub async fn analyze_llm(
+    app: tauri::AppHandle,
+    image_id: String,
+    prompt: Option<String>,
+    provider: String,
+    store: tauri::State<'_, ImageStore>,
 ) -> Result<LlmResponse, String> {
-    // TODO: implement LLM vision analysis
-    Err("Not yet implemented".into())
+    use crate::ai::{compress, llm, ollama};
+    use tauri_plugin_store::StoreExt;
+
+    // Fetch image from store
+    let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {e}"))?;
+    let image = store
+        .get(&uuid)
+        .ok_or_else(|| format!("Image not found: {image_id}"))?;
+
+    // Load AI settings for compression params and model selection
+    let prefs_store = app
+        .store("prefs.json")
+        .map_err(|e| format!("Store error: {e}"))?;
+    let ai_settings: crate::commands::settings::AiSettings = prefs_store
+        .get("ai")
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default();
+
+    // Compress image before sending to LLM
+    let image_b64 = compress::compress_for_llm(
+        &image,
+        ai_settings.image_max_dim,
+        ai_settings.image_quality,
+    )
+    .map_err(|e| format!("Image compression failed: {e}"))?;
+
+    let prompt_text = prompt.unwrap_or_else(|| "Describe this image.".to_string());
+
+    let output = match provider.as_str() {
+        "claude" | "anthropic" => {
+            let api_key = crate::credentials::get_api_key("anthropic")
+                .map_err(|_| "No Anthropic API key configured".to_string())?;
+            let llm_provider = llm::LlmProvider::Claude {
+                model: ai_settings.claude_model.clone(),
+            };
+            llm::analyze(&image_b64, &prompt_text, &llm_provider, &api_key)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        "openai" => {
+            let api_key = crate::credentials::get_api_key("openai")
+                .map_err(|_| "No OpenAI API key configured".to_string())?;
+            let llm_provider = llm::LlmProvider::OpenAI {
+                model: ai_settings.openai_model.clone(),
+            };
+            llm::analyze(&image_b64, &prompt_text, &llm_provider, &api_key)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        "gemini" => {
+            let api_key = crate::credentials::get_api_key("gemini")
+                .map_err(|_| "No Gemini API key configured".to_string())?;
+            let llm_provider = llm::LlmProvider::Gemini {
+                model: ai_settings.gemini_model.clone(),
+            };
+            llm::analyze(&image_b64, &prompt_text, &llm_provider, &api_key)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        "ollama" => {
+            let config = ollama::OllamaConfig {
+                url: ai_settings.ollama_url.clone(),
+                model: ai_settings.ollama_model.clone(),
+            };
+            ollama::analyze(&image_b64, &prompt_text, &config)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        other => return Err(format!("Unknown provider '{other}'")),
+    };
+
+    Ok(LlmResponse {
+        provider: provider.clone(),
+        model: output.model,
+        response_text: output.response,
+        tokens_used: output.tokens_used,
+        latency_ms: output.latency_ms,
+    })
 }

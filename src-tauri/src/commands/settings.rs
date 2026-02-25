@@ -66,6 +66,8 @@ pub struct AiSettings {
     pub claude_model: String,
     pub openai_model: String,
     pub gemini_model: String,
+    pub image_max_dim: u32,
+    pub image_quality: u8,
 }
 
 impl Default for AiSettings {
@@ -78,6 +80,8 @@ impl Default for AiSettings {
             claude_model: "claude-sonnet-4-20250514".to_string(),
             openai_model: "gpt-4o".to_string(),
             gemini_model: "gemini-2.0-flash".to_string(),
+            image_max_dim: 2048,
+            image_quality: 85,
         }
     }
 }
