@@ -4,7 +4,7 @@
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
 import { History, DeleteCommand } from './canvas/history.js';
-import { AddAnnotationCommand, CropCommand } from './canvas/commands.js';
+import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker } from './ui/color-picker.js';
@@ -157,6 +157,12 @@ async function init() {
       isCropDragging = false;
       cropStartImg = null;
       engine.renderCropOverlay(null);
+    }
+    // Clear selection handles when leaving select tool.
+    if (tool !== 'select') {
+      isSelectDragging = false;
+      selectOrigAnnotation = null;
+      engine.renderHandles(null);
     }
     // Commit any pending text input.
     if (pendingTextArea) pendingTextArea.blur();
@@ -528,6 +534,17 @@ async function init() {
       return;
     }
 
+    // Escape — cancel select drag or deselect
+    if (e.key === 'Escape' && store.get('activeTool') === 'select') {
+      e.preventDefault();
+      isSelectDragging = false;
+      selectOrigAnnotation = null;
+      selectDragStartImg = null;
+      selectionManager.deselect();
+      refreshSelectionUI(null);
+      return;
+    }
+
     // Delete — delete selected annotation
     if (e.key === 'Delete') {
       const selected = selectionManager.selected;
@@ -593,6 +610,13 @@ async function init() {
 
   // Text tool — reference to active textarea (if any).
   let pendingTextArea = null;
+
+  // Select tool drag state.
+  let isSelectDragging = false;
+  let selectDragType = null;      // 'move' | 'resize'
+  let selectDragHandleId = null;  // handle id for resize
+  let selectDragStartImg = null;  // {x, y} image coords at drag start
+  let selectOrigAnnotation = null; // annotation snapshot at drag start
 
   const DRAG_DRAW_TOOLS = new Set(['rect', 'arrow', 'ellipse', 'blur', 'highlight']);
 
@@ -673,14 +697,41 @@ async function init() {
       return;
     }
 
-    // Select / hit test.
-    const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, store.get('annotations'));
-    if (hitResult) {
-      selectionManager.select(hitResult.annotation);
-      engine.renderAnnotations(store.get('annotations'), hitResult.annotation);
-    } else {
-      selectionManager.deselect();
-      engine.renderAnnotations(store.get('annotations'), null);
+    // Select tool.
+    if (tool === 'select') {
+      const selected = selectionManager.selected;
+
+      // 1. Check if click is on a resize/endpoint handle of the current selection.
+      if (selected) {
+        const handle = selectionManager.hitTestHandle(
+          imgPt.x, imgPt.y, selected, engine.handleHitRadius(),
+        );
+        if (handle) {
+          isSelectDragging = true;
+          selectDragType = 'resize';
+          selectDragHandleId = handle.id;
+          selectDragStartImg = imgPt;
+          selectOrigAnnotation = { ...selected, points: selected.points ? selected.points.map(p => ({ ...p })) : [] };
+          return;
+        }
+      }
+
+      // 2. Hit-test all annotations.
+      const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, store.get('annotations'));
+      if (hitResult) {
+        selectionManager.select(hitResult.annotation);
+        refreshSelectionUI(hitResult.annotation);
+        // Start a move drag immediately.
+        isSelectDragging = true;
+        selectDragType = 'move';
+        selectDragStartImg = imgPt;
+        selectOrigAnnotation = { ...hitResult.annotation, points: hitResult.annotation.points ? hitResult.annotation.points.map(p => ({ ...p })) : [] };
+      } else {
+        selectionManager.deselect();
+        refreshSelectionUI(null);
+        isSelectDragging = false;
+      }
+      return;
     }
   });
 
@@ -790,6 +841,37 @@ async function init() {
       engine.renderCropOverlay(r);
       return;
     }
+
+    // Select tool — update cursor and show handles at drag position.
+    if (tool === 'select') {
+      if (isSelectDragging && selectOrigAnnotation && selectDragStartImg) {
+        const dx = imgPt.x - selectDragStartImg.x;
+        const dy = imgPt.y - selectDragStartImg.y;
+        const preview = selectDragType === 'move'
+          ? selectionManager.applyMove(selectOrigAnnotation, dx, dy)
+          : selectionManager.applyResize(selectOrigAnnotation, selectDragHandleId, dx, dy);
+        engine.renderHandles(selectionManager.getHandles(preview));
+        return;
+      }
+
+      // Hovering — update cursor to reflect what the pointer is over.
+      const selected = selectionManager.selected;
+      if (selected) {
+        const handle = selectionManager.hitTestHandle(
+          imgPt.x, imgPt.y, selected, engine.handleHitRadius(),
+        );
+        if (handle) {
+          activeCanvas.style.cursor = handle.cursor;
+          return;
+        }
+        if (selectionManager.hitTest(imgPt.x, imgPt.y, [selected])) {
+          activeCanvas.style.cursor = 'move';
+          return;
+        }
+      }
+      activeCanvas.style.cursor = 'default';
+      return;
+    }
   });
 
   // ── Mouse up ───────────────────────────────────────────────────────────────
@@ -842,6 +924,28 @@ async function init() {
       return;
     }
 
+    // Select tool drag — commit move/resize to history on mouseup.
+    if (isSelectDragging && selectOrigAnnotation && selectDragStartImg) {
+      isSelectDragging = false;
+      const dx = imgPt.x - selectDragStartImg.x;
+      const dy = imgPt.y - selectDragStartImg.y;
+      selectDragStartImg = null;
+
+      // Only record if there was meaningful movement.
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        const finalAnnotation = selectDragType === 'move'
+          ? selectionManager.applyMove(selectOrigAnnotation, dx, dy)
+          : selectionManager.applyResize(selectOrigAnnotation, selectDragHandleId, dx, dy);
+        const cmd = new TransformAnnotationCommand(selectOrigAnnotation, finalAnnotation);
+        const newAnnotations = history.execute(cmd, store.get('annotations'));
+        store.set('annotations', newAnnotations);
+        selectionManager.updateSelected(finalAnnotation);
+        refreshSelectionUI(finalAnnotation);
+      }
+      selectOrigAnnotation = null;
+      return;
+    }
+
     // Crop drag ends on mouseup — apply immediately.
     if (isCropDragging && cropStartImg) {
       isCropDragging = false;
@@ -853,9 +957,31 @@ async function init() {
     }
   });
 
+  // Refresh selection indicator + handles after any annotation/selection change.
+  function refreshSelectionUI(annotation) {
+    const annotations = store.get('annotations');
+    engine.renderAnnotations(annotations, annotation);
+    engine.renderHandles(annotation ? selectionManager.getHandles(annotation) : null);
+  }
+
   // Re-render annotations when state changes.
   store.on('annotations', (annotations) => {
-    engine.renderAnnotations(annotations, selectionManager.selected);
+    const sel = selectionManager.selected;
+    if (sel) {
+      // Keep the selected reference up-to-date (e.g. after undo/redo replaces objects)
+      const updated = annotations.find(a => a.id === sel.id);
+      if (updated) {
+        selectionManager.updateSelected(updated);
+        engine.renderAnnotations(annotations, updated);
+        engine.renderHandles(selectionManager.getHandles(updated));
+      } else {
+        selectionManager.deselect();
+        engine.renderAnnotations(annotations, null);
+        engine.renderHandles(null);
+      }
+    } else {
+      engine.renderAnnotations(annotations, null);
+    }
   });
 
   // Listen for screenshot-ready events (for future async portal flow).

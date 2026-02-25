@@ -45,6 +45,26 @@ export class CropCommand {
   }
 }
 
+// Stores a before/after snapshot of a single annotation.
+// Used by move and resize operations.
+export class TransformAnnotationCommand {
+  #before;
+  #after;
+
+  constructor(before, after) {
+    this.#before = { ...before, points: before.points ? before.points.map(p => ({ ...p })) : [] };
+    this.#after  = { ...after,  points: after.points  ? after.points.map(p => ({ ...p })) : [] };
+  }
+
+  execute(annotations) {
+    return annotations.map(a => a.id === this.#after.id ? this.#after : a);
+  }
+
+  undo(annotations) {
+    return annotations.map(a => a.id === this.#before.id ? this.#before : a);
+  }
+}
+
 export class AddAnnotationCommand {
   #annotation;
 

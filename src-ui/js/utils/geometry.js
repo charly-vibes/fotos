@@ -19,3 +19,20 @@ export function normalizeRect(x1, y1, x2, y2) {
     height: Math.abs(y2 - y1),
   };
 }
+
+// Minimum distance from point (px, py) to line segment (x1,y1)-(x2,y2).
+export function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// True if (px, py) is inside ellipse centred at (cx, cy) with radii (rx, ry).
+export function pointInEllipse(px, py, cx, cy, rx, ry) {
+  if (rx <= 0 || ry <= 0) return false;
+  const nx = (px - cx) / rx;
+  const ny = (py - cy) / ry;
+  return nx * nx + ny * ny <= 1;
+}

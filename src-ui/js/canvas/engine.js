@@ -365,6 +365,32 @@ export class CanvasEngine {
     ctx.restore();
   }
 
+  // Draw resize/move handles for the selected annotation on the active layer.
+  // handles: array of {x, y} in image coords, or null/[] to clear.
+  renderHandles(handles) {
+    const ctx = this.#activeCtx;
+    ctx.resetTransform();
+    ctx.clearRect(0, 0, this.#activeCanvas.width, this.#activeCanvas.height);
+    if (!handles || handles.length === 0) return;
+
+    this.#applyTransform(ctx);
+    const hs = 5 / this.#zoom; // half-size of each handle square, in image pixels
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#0066FF';
+    ctx.lineWidth = 1.5 / this.#zoom;
+    for (const h of handles) {
+      ctx.fillRect(h.x - hs, h.y - hs, hs * 2, hs * 2);
+      ctx.strokeRect(h.x - hs, h.y - hs, hs * 2, hs * 2);
+    }
+    ctx.restore();
+  }
+
+  // Handle radius in image pixels for hit testing (matches renderHandles size).
+  handleHitRadius() {
+    return 7 / (this.#zoom || 1);
+  }
+
   // Draw a crop selection overlay: dims everything outside rect and shows a
   // dashed border.  Pass null to clear.
   renderCropOverlay(rect) {
