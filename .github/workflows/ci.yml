@@ -93,19 +93,19 @@ jobs:
       - name: Install tauri-cli
         run: cargo install tauri-cli --locked
 
-      - name: Install just
-        run: cargo install just --locked
-
       - name: Build package
-        run: just package deb
+        run: |
+          triple=$(rustc -vV | grep '^host:' | cut -d' ' -f2)
+          touch "src-tauri/fotos-mcp-${triple}"
+          cargo tauri build --bundles deb,appimage
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-bundles
           path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
 
   build-windows:
     name: Build (Windows)
@@ -123,7 +123,15 @@ jobs:
         with:
           version: "17"
 
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-tesseract-x64-windows-static-md-v1
+
       - name: Install tesseract via vcpkg
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
         run: |
           vcpkg install tesseract:x64-windows-static-md leptonica:x64-windows-static-md
         env:
@@ -132,11 +140,11 @@ jobs:
       - name: Install tauri-cli
         run: cargo install tauri-cli --locked
 
-      - name: Install just
-        run: cargo install just --locked
-
       - name: Build package
-        run: just package msi
+        shell: bash
+        run: |
+          touch "src-tauri/fotos-mcp-x86_64-pc-windows-msvc.exe"
+          cargo tauri build --bundles msi,nsis
         env:
           VCPKG_ROOT: C:\vcpkg
           TESSERACT_PREFIX: C:\vcpkg\installed\x64-windows-static-md
@@ -146,5 +154,5 @@ jobs:
         with:
           name: windows-bundles
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/nsis/*.exe
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
