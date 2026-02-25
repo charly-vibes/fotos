@@ -2,22 +2,21 @@ version: 2
 project_name: fotos-mcp
 
 builds:
-  - builder: rust
+  - builder: prebuilt
     id: fotos-mcp
     binary: fotos-mcp
-    # Build from the src-mcp workspace member
-    dir: src-mcp
-    targets:
-      - x86_64-unknown-linux-gnu
-      - aarch64-unknown-linux-gnu
-      - x86_64-apple-darwin
-      - aarch64-apple-darwin
-      - x86_64-pc-windows-msvc
-    flags:
-      - --release
-      - --locked
-    env:
-      - CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    prebuilt:
+      path: "prebuilt/{{ .Os }}_{{ .Arch }}/fotos-mcp{{ .Ext }}"
 
 archives:
   - format: tar.gz
