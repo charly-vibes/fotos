@@ -1,8 +1,8 @@
 /// MCP server implementation.
 ///
-/// Implements the ServerHandler trait from rmcp, providing stub handlers for
-/// tools, resources, and prompts. Concrete implementations come in subsequent
-/// tickets (fotos-0j0, fotos-kxs, fotos-rsw, fotos-d6e).
+/// Implements the ServerHandler trait from rmcp. Prompt templates are fully
+/// implemented here (fotos-kxs). Tools, resources, and IPC bridge are stubs
+/// pending fotos-0j0, fotos-rsw, and fotos-d6e respectively.
 use rmcp::{
     ServerHandler,
     model::{
@@ -17,6 +17,7 @@ use rmcp::{
 use tracing::info;
 
 use crate::bridge::AppBridge;
+use crate::prompts;
 
 #[derive(Clone)]
 pub struct FotosMcpServer {
@@ -88,8 +89,7 @@ impl ServerHandler for FotosMcpServer {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListPromptsResult, McpError> {
-        // Populated in fotos-kxs
-        Ok(ListPromptsResult::default())
+        Ok(prompts::list())
     }
 
     async fn get_prompt(
@@ -97,10 +97,7 @@ impl ServerHandler for FotosMcpServer {
         request: GetPromptRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<GetPromptResult, McpError> {
-        Err(McpError::invalid_params(
-            format!("unknown prompt: {}", request.name),
-            None,
-        ))
+        prompts::get(request)
     }
 
     async fn list_resources(

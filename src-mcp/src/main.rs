@@ -1,4 +1,5 @@
 mod bridge;
+mod prompts;
 mod server;
 
 use anyhow::Result;
