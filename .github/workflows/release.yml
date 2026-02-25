@@ -127,7 +127,7 @@ jobs:
             libsoup-3.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev \
             libatk1.0-dev libappindicator3-dev libdbus-1-dev libpipewire-0.3-dev \
             libclang-dev libssl-dev libtesseract-dev libleptonica-dev \
-            librsvg2-dev
+            librsvg2-dev libgbm-dev
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
