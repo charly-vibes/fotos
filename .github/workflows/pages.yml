@@ -1,0 +1,66 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev \
+            libatk1.0-dev libappindicator3-dev libdbus-1-dev libpipewire-0.3-dev \
+            libclang-dev libssl-dev libtesseract-dev libleptonica-dev \
+            librsvg2-dev libgbm-dev
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Create sidecar placeholder
+        run: touch "src-tauri/fotos-mcp-$(rustc -vV | grep host | cut -d' ' -f2)"
+
+      - name: Build rustdoc
+        run: cargo doc --workspace --no-deps
+
+      - name: Add redirect index
+        run: echo '<meta http-equiv="refresh" content="0; url=fotos_lib/index.html">' > target/doc/index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
