@@ -7,6 +7,7 @@ import { History, DeleteCommand } from './canvas/history.js';
 import { AddAnnotationCommand, CropCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
+import { initColorPicker } from './ui/color-picker.js';
 import { initAiPanel } from './ui/ai-panel.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
@@ -120,6 +121,7 @@ async function init() {
   const regionPicker = new RegionPicker();
 
   initToolbar(store);
+  initColorPicker(store);
   initAiPanel(store);
 
   // Track the current image data URL so crop undo can reload it.
