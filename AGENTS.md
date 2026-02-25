@@ -15,8 +15,6 @@ just test           # cargo test
 just spec-validate  # validate all OpenSpec specs
 just setup-distrobox  # one-time: create distrobox + install deps
 just setup-flatpak    # one-time: install Flatpak SDK runtimes
-just package          # build Flatpak
-just install          # build + install Flatpak locally
 just gen-cargo-sources # regenerate flatpak/cargo-sources.json after dependency changes
 ```
 
@@ -204,7 +202,7 @@ Keep this managed block so `wai init` can refresh the instructions.
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** — create beads issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) — `just check`, `just lint`, `just test`
+2. **Run quality gates** (if code changed) — `just check`, `just lint`, `just test`, `just spec-validate`
 3. **Update issue status** — close finished work (`bd close <id>`), update in-progress items
 4. **Commit and sync:**
    ```bash

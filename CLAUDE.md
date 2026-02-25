@@ -147,7 +147,7 @@ just fmt            # rustfmt
 just test           # cargo test
 just spec-validate  # validate all OpenSpec specs
 just setup-distrobox  # one-time: create distrobox + install deps
-just setup-flatpak    # one-time: install Flatpak runtimes for `just install`
+just setup-flatpak    # one-time: install Flatpak SDK runtimes
 just gen-cargo-sources # regenerate flatpak/cargo-sources.json after dependency changes
 ```
 
@@ -192,3 +192,29 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+## Landing the Plane (Session Completion)
+
+**When ending a work session**, complete ALL steps below.
+
+**Note:** This project uses ephemeral branches — code is merged to `main` locally, not pushed to a remote. The beads issue tracker lives in the repo and is synced via `bd sync --from-main`.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** — create beads issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) — `just check`, `just lint`, `just test`, `just spec-validate`
+3. **Update issue status** — close finished work (`bd close <id>`), update in-progress items
+4. **Commit and sync:**
+   ```bash
+   git status                  # review what changed
+   git add <files>             # stage code changes
+   bd sync --from-main         # pull beads updates from main
+   git commit -m "..."         # commit code + beads state together
+   ```
+5. **Create a handoff** — `wai handoff create tracer-bullet` so the next session has context
+6. **Verify** — `git status` shows a clean working tree
+
+**CRITICAL RULES:**
+- NEVER say "done" before committing your changes
+- Do NOT use `git push` — this repo has no upstream remote; merges happen locally
+- Run `bd sync --from-main` before committing to avoid beads conflicts

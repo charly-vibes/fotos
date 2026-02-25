@@ -41,6 +41,8 @@ just build              # cargo build --release
 just test               # cargo test
 just lint               # clippy -D warnings
 just fmt                # rustfmt
+just spec-validate      # validate all OpenSpec specs
+just spec-list          # list all OpenSpec capabilities
 
 # Packaging
 just package            # build Flatpak
@@ -49,6 +51,30 @@ just gen-cargo-sources  # regenerate flatpak/cargo-sources.json (run after Cargo
 ```
 
 See the `justfile` for all available recipes.
+
+## Current Implementation Status
+
+Fotos is currently in active development (**tracer-bullet** project, **implement** phase).
+
+| Component | Status | Implementation Details |
+|---|---|---|
+| **Capture** | Partial | Fullscreen capture on Linux (Wayland portal & X11) and Windows (xcap). |
+| **Annotation** | Partial | Canvas engine with zoom/pan and history (undo/redo). Selection tool supports move/resize. |
+| **AI Features** | Partial | OCR (Tesseract) and PII detection/auto-blur implemented. LLM vision is in progress. |
+| **MCP Server** | Partial | Prompts are fully implemented. Tools and Resources are currently stubs. |
+| **UI Shell** | Stable | Toolbar, canvas layers, and basic panels are functional. |
+
+See [docs/MCP.md](docs/MCP.md) for details on AI agent integration.
+
+## Project Roadmap
+
+Key features currently in the works (tracked via `beads`):
+
+- **LLM Vision Integration**: Support for Claude, OpenAI, Gemini, and local Ollama.
+- **Enhanced Capture**: Monitor and window enumeration and capture modes.
+- **Full MCP Support**: Implement all 6 MCP tools and resources with an IPC bridge to the main app.
+- **Annotation Tools**: Complete the implementation of all 9 planned drawing tools.
+- **Theme System**: Full support for light, dark, and system themes via CSS custom properties.
 
 ## Architecture
 
