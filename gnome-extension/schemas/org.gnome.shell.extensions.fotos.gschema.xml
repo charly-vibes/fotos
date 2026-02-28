@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.fotos"
+          path="/org/gnome/shell/extensions/fotos/">
+
+    <key name="capture-region-shortcut" type="as">
+      <default>["&lt;Ctrl&gt;&lt;Shift&gt;s"]</default>
+      <summary>Capture Region shortcut</summary>
+      <description>Keyboard shortcut to trigger a region screenshot via Fotos.</description>
+    </key>
+
+    <key name="capture-fullscreen-shortcut" type="as">
+      <default>["&lt;Ctrl&gt;&lt;Shift&gt;a"]</default>
+      <summary>Capture Fullscreen shortcut</summary>
+      <description>Keyboard shortcut to trigger a fullscreen screenshot via Fotos.</description>
+    </key>
+
+  </schema>
+</schemalist>

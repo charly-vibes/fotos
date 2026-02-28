@@ -1,0 +1,8 @@
+{
+  "uuid": "fotos@io.github.charly",
+  "name": "Fotos",
+  "description": "Panel indicator for Fotos — capture region or fullscreen screenshots from the GNOME Shell top bar.",
+  "shell-version": ["45", "46", "47", "48"],
+  "settings-schema": "org.gnome.shell.extensions.fotos",
+  "version": 1
+}
