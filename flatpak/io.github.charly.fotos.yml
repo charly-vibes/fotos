@@ -19,6 +19,7 @@ finish-args:
   - --talk-name=org.freedesktop.portal.Screenshot
   - --talk-name=org.freedesktop.portal.GlobalShortcuts
   - --talk-name=org.freedesktop.secrets
+  - --own-name=io.github.charly.Fotos
 
 modules:
   - name: intltool

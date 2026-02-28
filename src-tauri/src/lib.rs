@@ -3,6 +3,8 @@ pub mod capture;
 pub mod commands;
 pub mod credentials;
 pub mod ipc;
+#[cfg(target_os = "linux")]
+mod dbus;
 
 use base64::prelude::*;
 use std::io::Cursor;
@@ -145,6 +147,18 @@ pub fn run() {
                     tracing::error!("IPC server exited: {e}");
                 }
             });
+
+            // Start the D-Bus service for GNOME Shell integration (Linux only).
+            #[cfg(target_os = "linux")]
+            {
+                let dbus_handle = handle.clone();
+                let dbus_capturing = is_capturing.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = dbus::start_service(dbus_handle, dbus_capturing).await {
+                        tracing::warn!("D-Bus service failed to start: {e}");
+                    }
+                });
+            }
 
             let r1 = app.global_shortcut().on_shortcut("ctrl+shift+s", {
                 let handle = handle.clone();

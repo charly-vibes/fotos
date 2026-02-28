@@ -58,4 +58,4 @@ directories = "6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = "0.11"
-zbus = "5"
+zbus = { version = "5", features = ["tokio"] }
