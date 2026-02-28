@@ -210,6 +210,21 @@ setup-flatpak:
 install-tauri-cli:
     cargo install tauri-cli
 
+# ── GNOME Extension ───────────────────────────────────
+
+# Compile GSettings schemas for the GNOME extension
+gnome-schema:
+    glib-compile-schemas gnome-extension/schemas/
+
+# Install the GNOME extension to the user profile
+gnome-install: gnome-schema
+    install -d ~/.local/share/gnome-shell/extensions/fotos@io.github.charly
+    cp -r gnome-extension/. ~/.local/share/gnome-shell/extensions/fotos@io.github.charly/
+
+# Pack the GNOME extension into a zip for distribution
+gnome-pack: gnome-schema
+    cd gnome-extension && zip -r ../fotos-gnome-extension.zip .
+
 # ── Utilities ─────────────────────────────────────────
 
 # Remove build artifacts
