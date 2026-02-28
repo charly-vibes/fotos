@@ -38,9 +38,9 @@
 - [x] 6.1 `just check` — Rust compiles with new `dbus.rs`
 - [x] 6.2 `just lint` — no Clippy warnings
 - [x] 6.3 `just test` — existing tests pass
-- [ ] 6.4 D-Bus smoke test: run Fotos, then `gdbus call --session --dest io.github.charly.Fotos --object-path /io/github/charly/Fotos --method io.github.charly.Fotos.Activate` — window should appear/focus
-- [ ] 6.5 `just gnome-install` — extension deploys to user profile
-- [ ] 6.6 Manual: enable extension, run Fotos, confirm panel indicator appears and menu actions work
-- [ ] 6.7 Manual: press Ctrl+Shift+S with Fotos running → region capture triggers (note: save-as shortcut is shadowed while extension is enabled — expected)
-- [ ] 6.8 Manual: click "Open Fotos" with Fotos not running → Fotos launches and window appears
+- [ ] 6.4 **[manual]** D-Bus smoke test: run Fotos, then `gdbus call --session --dest io.github.charly.Fotos --object-path /io/github/charly/Fotos --method io.github.charly.Fotos.Activate` — window should appear/focus
+- [ ] 6.5 **[manual]** `just gnome-install` — extension deploys to user profile
+- [ ] 6.6 **[manual]** Enable extension, run Fotos, confirm panel indicator appears and menu actions work
+- [ ] 6.7 **[manual]** Press Ctrl+Shift+S with Fotos running → region capture triggers (note: save-as shortcut is shadowed while extension is enabled — expected)
+- [ ] 6.8 **[manual]** Click "Open Fotos" with Fotos not running → Fotos launches and window appears
 - [x] 6.9 `just spec-validate` — all specs pass

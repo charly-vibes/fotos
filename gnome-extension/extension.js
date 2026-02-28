@@ -21,7 +21,6 @@ const FOTOS_IFACE_XML = `
     <method name="Activate"/>
     <method name="TakeScreenshot">
       <arg type="s" direction="in" name="mode"/>
-      <arg type="s" direction="out" name="status"/>
     </method>
     <property name="Version" type="s" access="read"/>
   </interface>
@@ -161,11 +160,8 @@ export default class FotosExtension extends Extension {
     _updateSensitivity() {
         if (!this._regionItem || !this._fullscreenItem)
             return;
-        // Capture items always enabled — _launchAndThen handles cold start.
-        // Open Fotos is always available too, but we dim captures when running
-        // to give visual feedback that the service is live.
-        this._regionItem.sensitive = true;
-        this._fullscreenItem.sensitive = true;
+        this._regionItem.sensitive = this._fotosOnBus;
+        this._fullscreenItem.sensitive = this._fotosOnBus;
     }
 
     /**

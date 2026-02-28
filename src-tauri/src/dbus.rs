@@ -20,17 +20,21 @@ impl FotosService {
         Ok(())
     }
 
-    async fn take_screenshot(&self, mode: String) -> zbus::fdo::Result<String> {
+    async fn take_screenshot(&self, mode: String) -> zbus::fdo::Result<()> {
         if self.is_capturing.load(Ordering::SeqCst) {
-            return Ok("Failed".to_string());
+            return Err(zbus::fdo::Error::Failed("capture in progress".to_string()));
         }
         let event = match mode.as_str() {
             "region" => "global-capture-region",
             "fullscreen" => "global-capture-fullscreen",
-            _ => return Ok("InvalidArgs".to_string()),
+            _ => {
+                return Err(zbus::fdo::Error::InvalidArgs(format!(
+                    "unknown mode: {mode}"
+                )))
+            }
         };
         let _ = self.app.emit(event, ());
-        Ok("Ok".to_string())
+        Ok(())
     }
 
     #[zbus(property)]

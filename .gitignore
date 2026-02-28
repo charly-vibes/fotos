@@ -35,3 +35,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# GNOME extension compiled schemas
+gnome-extension/schemas/gschemas.compiled
+
+# GNOME extension zip
+fotos-gnome-extension.zip
