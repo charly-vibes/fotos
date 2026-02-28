@@ -2,9 +2,9 @@ pub mod ai;
 pub mod capture;
 pub mod commands;
 pub mod credentials;
-pub mod ipc;
 #[cfg(target_os = "linux")]
 mod dbus;
+pub mod ipc;
 
 use base64::prelude::*;
 use std::io::Cursor;
