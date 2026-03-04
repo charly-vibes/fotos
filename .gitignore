@@ -41,3 +41,7 @@ gnome-extension/schemas/gschemas.compiled
 
 # GNOME extension zip
 fotos-gnome-extension.zip
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
