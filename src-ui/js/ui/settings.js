@@ -5,6 +5,8 @@ import {
   getSettings, setSettings,
 } from '../tauri-bridge.js';
 
+const SETTINGS_VERSION = 1;
+
 const PROVIDERS = [
   { id: 'anthropic', name: 'Anthropic (Claude)', placeholder: 'sk-ant-...' },
   { id: 'openai',    name: 'OpenAI (GPT-4o)',    placeholder: 'sk-...' },
@@ -73,7 +75,19 @@ async function loadSettings() {
   }
 }
 
-function applyToForm({ capture, annotation, ai, ui }) {
+// Deep-merge settings with DEFAULTS so any missing keys are filled in.
+// This handles upgrades where a new setting is added to a later version.
+function mergeWithDefaults(settings) {
+  return {
+    capture: { ...DEFAULTS.capture, ...(settings.capture ?? {}) },
+    annotation: { ...DEFAULTS.annotation, ...(settings.annotation ?? {}) },
+    ai: { ...DEFAULTS.ai, ...(settings.ai ?? {}) },
+    ui: { ...DEFAULTS.ui, ...(settings.ui ?? {}) },
+  };
+}
+
+function applyToForm(rawSettings) {
+  const { capture, annotation, ai, ui } = mergeWithDefaults(rawSettings);
   // Capture
   setVal('pref-capture-defaultMode', capture.defaultMode);
   setVal('pref-capture-defaultFormat', capture.defaultFormat);
