@@ -1,6 +1,8 @@
 mod bridge;
 mod prompts;
+mod resources;
 mod server;
+mod tools;
 
 use anyhow::Result;
 use rmcp::{transport::stdio, ServiceExt};

@@ -1,32 +1,65 @@
 /// MCP server implementation.
 ///
-/// Implements the ServerHandler trait from rmcp. Prompt templates are fully
-/// implemented here (fotos-kxs). Tools, resources, and IPC bridge are stubs
-/// pending fotos-0j0, fotos-rsw, and fotos-d6e respectively.
+/// Implements the ServerHandler trait from rmcp. The bridge is connected
+/// lazily on first tool/resource call and cached for the session lifetime.
+/// If the connection is lost, the next call re-attempts the connection.
+use std::sync::Arc;
+
 use rmcp::{
     model::{
         CallToolRequestParam, CallToolResult, GetPromptRequestParam, GetPromptResult,
-        Implementation, InitializeRequestParam, ListPromptsResult, ListResourcesResult,
-        ListToolsResult, PaginatedRequestParam, ReadResourceRequestParam, ReadResourceResult,
-        ServerCapabilities, ServerInfo,
+        Implementation, InitializeRequestParam, ListPromptsResult, ListResourceTemplatesResult,
+        ListResourcesResult, ListToolsResult, PaginatedRequestParam, ReadResourceRequestParam,
+        ReadResourceResult, ServerCapabilities, ServerInfo,
     },
     service::{RequestContext, RoleServer},
     Error as McpError, ServerHandler,
 };
+use tokio::sync::Mutex;
 use tracing::info;
 
 use crate::bridge::AppBridge;
 use crate::prompts;
+use crate::resources;
+use crate::tools;
 
 #[derive(Clone)]
 pub struct FotosMcpServer {
-    #[allow(dead_code)]
-    bridge: Option<AppBridge>,
+    /// Lazily-connected IPC bridge to the main Tauri app.
+    /// `None` means not yet connected (or last connection failed).
+    bridge: Arc<Mutex<Option<AppBridge>>>,
 }
 
 impl FotosMcpServer {
     pub fn new() -> Self {
-        Self { bridge: None }
+        Self {
+            bridge: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Return a connected bridge, or `None` if the app is not running.
+    ///
+    /// Tries to connect if not already connected. On failure the guard is left
+    /// as `None` so the next call will retry.
+    async fn bridge(&self) -> Option<AppBridge> {
+        let mut guard = self.bridge.lock().await;
+        if guard.is_none() {
+            match AppBridge::connect().await {
+                Ok(b) => {
+                    tracing::info!("IPC bridge connected");
+                    *guard = Some(b);
+                }
+                Err(e) => {
+                    tracing::debug!("IPC bridge unavailable: {e}");
+                }
+            }
+        }
+        guard.clone()
+    }
+
+    /// Clear the cached bridge so the next call will reconnect.
+    async fn reset_bridge(&self) {
+        *self.bridge.lock().await = None;
     }
 }
 
@@ -60,6 +93,8 @@ impl ServerHandler for FotosMcpServer {
             protocol = ?request.protocol_version,
             "MCP client connected"
         );
+        // Eagerly attempt bridge connection; failure is non-fatal.
+        let _ = self.bridge().await;
         Ok(self.get_info())
     }
 
@@ -68,8 +103,7 @@ impl ServerHandler for FotosMcpServer {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        // Populated in fotos-0j0
-        Ok(ListToolsResult::default())
+        Ok(tools::list())
     }
 
     async fn call_tool(
@@ -77,10 +111,18 @@ impl ServerHandler for FotosMcpServer {
         request: CallToolRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        Err(McpError::invalid_params(
-            format!("unknown tool: {}", request.name),
-            None,
-        ))
+        let bridge = self.bridge().await;
+        let result =
+            tools::call(bridge.as_ref(), &request.name, request.arguments.as_ref()).await;
+        // If we got an IPC error content block, reset so next call retries.
+        if let Ok(ref r) = result {
+            if r.is_error == Some(true)
+                && r.content.iter().any(|c| format!("{c:?}").contains("IPC error"))
+            {
+                self.reset_bridge().await;
+            }
+        }
+        result
     }
 
     async fn list_prompts(
@@ -104,8 +146,15 @@ impl ServerHandler for FotosMcpServer {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, McpError> {
-        // Populated in fotos-rsw
-        Ok(ListResourcesResult::default())
+        Ok(resources::list())
+    }
+
+    async fn list_resource_templates(
+        &self,
+        _request: PaginatedRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, McpError> {
+        Ok(resources::list_templates())
     }
 
     async fn read_resource(
@@ -113,9 +162,11 @@ impl ServerHandler for FotosMcpServer {
         request: ReadResourceRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResult, McpError> {
-        Err(McpError::invalid_params(
-            format!("unknown resource: {}", request.uri),
-            None,
-        ))
+        let bridge = self.bridge().await;
+        let result = resources::read(bridge.as_ref(), &request.uri).await;
+        if result.is_err() {
+            self.reset_bridge().await;
+        }
+        result
     }
 }
