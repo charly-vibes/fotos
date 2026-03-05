@@ -3,8 +3,8 @@
 
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
-import { History, DeleteCommand } from './canvas/history.js';
-import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand, ZOrderCommand, LockCommand } from './canvas/commands.js';
+import { History } from './canvas/history.js';
+import { AddAnnotationCommand, CropCommand, BatchTransformCommand, BatchDeleteCommand, ZOrderCommand, LockCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
@@ -253,7 +253,6 @@ async function init() {
       if (!isLocked) {
         // Locking: deselect
         selectionManager.deselect();
-        refreshSelectionUI(null);
       }
       engine.renderAnnotations(newAnnotations, isLocked ? target : null);
     }
@@ -321,7 +320,8 @@ async function init() {
     // Clear selection handles when leaving select tool.
     if (tool !== 'select') {
       isSelectDragging = false;
-      selectOrigAnnotation = null;
+      selectOrigAnnotations = [];
+      selectOrigCombinedBBox = null;
       engine.renderHandles(null);
     }
     // Commit any pending text input.
@@ -478,8 +478,6 @@ async function init() {
     if (!history.canUndo) { setStatusMessage('Nothing to undo', false); return; }
     const newAnnotations = history.undo(store.get('annotations'));
     store.set('annotations', newAnnotations);
-    selectionManager.deselect();
-    engine.renderAnnotations(newAnnotations, null);
     setStatusMessage('Undone');
   }
 
@@ -487,8 +485,6 @@ async function init() {
     if (!history.canRedo) { setStatusMessage('Nothing to redo', false); return; }
     const newAnnotations = history.redo(store.get('annotations'));
     store.set('annotations', newAnnotations);
-    selectionManager.deselect();
-    engine.renderAnnotations(newAnnotations, null);
     setStatusMessage('Redone');
   }
 
@@ -815,26 +811,36 @@ async function init() {
     if (e.key === 'Escape' && store.get('activeTool') === 'select') {
       e.preventDefault();
       isSelectDragging = false;
-      selectOrigAnnotation = null;
+      selectOrigAnnotations = [];
+      selectOrigCombinedBBox = null;
       selectDragStartImg = null;
       selectionManager.deselect();
-      refreshSelectionUI(null);
+      refreshSelectionUI();
       return;
     }
 
-    // Delete — delete selected annotation (skip locked)
+    // Ctrl+A — select all annotations (select tool only)
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === 'a' && store.get('activeTool') === 'select') {
+      e.preventDefault();
+      selectionManager.selectAll(store.get('annotations'));
+      refreshSelectionUI();
+      return;
+    }
+
+    // Delete — delete all selected annotations (skip locked)
     if (e.key === 'Delete') {
-      const selected = selectionManager.selected;
-      if (!selected || selected.locked) return;
+      const selectedList = selectionManager.selectedList.filter(a => !a.locked);
+      if (!selectedList.length) return;
       const annotations = store.get('annotations');
-      const index = annotations.findIndex(a => a.id === selected.id);
-      if (index === -1) return;
-      const deleteCmd = new DeleteCommand(selected, index);
-      const newAnnotations = history.execute(deleteCmd, annotations);
+      const items = selectedList
+        .map(a => ({ annotation: a, index: annotations.findIndex(x => x.id === a.id) }))
+        .filter(({ index }) => index >= 0);
+      if (!items.length) return;
+      const cmd = new BatchDeleteCommand(items);
+      const newAnnotations = history.execute(cmd, annotations);
       store.set('annotations', newAnnotations);
       selectionManager.deselect();
-      engine.renderAnnotations(newAnnotations, null);
-      setStatusMessage('Annotation deleted');
+      setStatusMessage(items.length > 1 ? `${items.length} annotations deleted` : 'Annotation deleted');
       return;
     }
 
@@ -907,10 +913,11 @@ async function init() {
 
   // Select tool drag state.
   let isSelectDragging = false;
-  let selectDragType = null;      // 'move' | 'resize'
-  let selectDragHandleId = null;  // handle id for resize
-  let selectDragStartImg = null;  // {x, y} image coords at drag start
-  let selectOrigAnnotation = null; // annotation snapshot at drag start
+  let selectDragType = null;           // 'move' | 'resize'
+  let selectDragHandleId = null;       // handle id for resize
+  let selectDragStartImg = null;       // {x, y} image coords at drag start
+  let selectOrigAnnotations = [];      // snapshots of all selected annotations at drag start
+  let selectOrigCombinedBBox = null;   // combined bbox at drag start (for multi-resize)
 
   const DRAG_DRAW_TOOLS = new Set(['rect', 'arrow', 'ellipse', 'blur', 'highlight']);
 
@@ -991,36 +998,62 @@ async function init() {
 
     // Select tool.
     if (tool === 'select') {
-      const selected = selectionManager.selected;
+      const annotations = store.get('annotations');
+
+      // Ctrl+click: toggle annotation in/out of selection.
+      if (e.ctrlKey) {
+        const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, annotations);
+        if (hitResult) selectionManager.toggle(hitResult.annotation);
+        refreshSelectionUI();
+        return;
+      }
+
+      // Shift+click: range-select by z-order from first selected to target.
+      if (e.shiftKey) {
+        const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, annotations);
+        if (hitResult) selectionManager.selectRange(annotations, hitResult.annotation);
+        refreshSelectionUI();
+        return;
+      }
 
       // 1. Check if click is on a resize/endpoint handle of the current selection.
-      if (selected) {
-        const handle = selectionManager.hitTestHandle(
-          imgPt.x, imgPt.y, selected, engine.handleHitRadius(),
-        );
+      if (selectionManager.count > 0) {
+        const handle = selectionManager.count === 1
+          ? selectionManager.hitTestHandle(imgPt.x, imgPt.y, selectionManager.selected, engine.handleHitRadius())
+          : selectionManager.hitTestSelectionHandle(imgPt.x, imgPt.y, engine.handleHitRadius());
         if (handle) {
           isSelectDragging = true;
           selectDragType = 'resize';
           selectDragHandleId = handle.id;
           selectDragStartImg = imgPt;
-          selectOrigAnnotation = { ...selected, points: selected.points ? selected.points.map(p => ({ ...p })) : [] };
+          selectOrigAnnotations = selectionManager.selectedList.map(
+            a => ({ ...a, points: a.points ? a.points.map(p => ({ ...p })) : [] }),
+          );
+          selectOrigCombinedBBox = selectionManager.count === 1
+            ? selectionManager.getBBox(selectionManager.selected)
+            : selectionManager.getSelectionBBox();
           return;
         }
       }
 
       // 2. Hit-test all annotations.
-      const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, store.get('annotations'));
+      const hitResult = selectionManager.hitTest(imgPt.x, imgPt.y, annotations);
       if (hitResult) {
-        selectionManager.select(hitResult.annotation);
-        refreshSelectionUI(hitResult.annotation);
-        // Start a move drag immediately.
+        // Keep multi-selection when clicking an already-selected annotation; otherwise single-select.
+        if (!selectionManager.isSelected(hitResult.annotation.id)) {
+          selectionManager.select(hitResult.annotation);
+        }
+        refreshSelectionUI();
         isSelectDragging = true;
         selectDragType = 'move';
         selectDragStartImg = imgPt;
-        selectOrigAnnotation = { ...hitResult.annotation, points: hitResult.annotation.points ? hitResult.annotation.points.map(p => ({ ...p })) : [] };
+        selectOrigAnnotations = selectionManager.selectedList.map(
+          a => ({ ...a, points: a.points ? a.points.map(p => ({ ...p })) : [] }),
+        );
+        selectOrigCombinedBBox = selectionManager.getSelectionBBox();
       } else {
         selectionManager.deselect();
-        refreshSelectionUI(null);
+        refreshSelectionUI();
         isSelectDragging = false;
       }
       return;
@@ -1134,27 +1167,36 @@ async function init() {
 
     // Select tool — update cursor and show handles at drag position.
     if (tool === 'select') {
-      if (isSelectDragging && selectOrigAnnotation && selectDragStartImg) {
+      if (isSelectDragging && selectOrigAnnotations.length && selectDragStartImg) {
         const dx = imgPt.x - selectDragStartImg.x;
         const dy = imgPt.y - selectDragStartImg.y;
-        const preview = selectDragType === 'move'
-          ? selectionManager.applyMove(selectOrigAnnotation, dx, dy)
-          : selectionManager.applyResize(selectOrigAnnotation, selectDragHandleId, dx, dy);
-        engine.renderHandles(selectionManager.getHandles(preview));
+        let previewList;
+        if (selectDragType === 'move') {
+          previewList = selectionManager.applyMoveAll(selectOrigAnnotations, dx, dy);
+        } else if (selectOrigAnnotations.length === 1) {
+          previewList = [selectionManager.applyResize(selectOrigAnnotations[0], selectDragHandleId, dx, dy)];
+        } else {
+          previewList = selectionManager.applyResizeAll(selectOrigAnnotations, selectOrigCombinedBBox, selectDragHandleId, dx, dy);
+        }
+        const previewBBox = selectionManager.getCombinedBBox(previewList);
+        engine.renderHandles(
+          previewList.length === 1
+            ? selectionManager.getHandles(previewList[0])
+            : selectionManager.getHandlesForBBox(previewBBox),
+        );
         return;
       }
 
       // Hovering — update cursor to reflect what the pointer is over.
-      const selected = selectionManager.selected;
-      if (selected) {
-        const handle = selectionManager.hitTestHandle(
-          imgPt.x, imgPt.y, selected, engine.handleHitRadius(),
-        );
+      if (selectionManager.count > 0) {
+        const handle = selectionManager.count === 1
+          ? selectionManager.hitTestHandle(imgPt.x, imgPt.y, selectionManager.selected, engine.handleHitRadius())
+          : selectionManager.hitTestSelectionHandle(imgPt.x, imgPt.y, engine.handleHitRadius());
         if (handle) {
           activeCanvas.style.cursor = handle.cursor;
           return;
         }
-        if (selectionManager.hitTest(imgPt.x, imgPt.y, [selected])) {
+        if (selectionManager.hitTestSelected(imgPt.x, imgPt.y)) {
           activeCanvas.style.cursor = 'move';
           return;
         }
@@ -1217,7 +1259,7 @@ async function init() {
     }
 
     // Select tool drag — commit move/resize to history on mouseup.
-    if (isSelectDragging && selectOrigAnnotation && selectDragStartImg) {
+    if (isSelectDragging && selectOrigAnnotations.length && selectDragStartImg) {
       isSelectDragging = false;
       const dx = imgPt.x - selectDragStartImg.x;
       const dy = imgPt.y - selectDragStartImg.y;
@@ -1225,16 +1267,22 @@ async function init() {
 
       // Only record if there was meaningful movement.
       if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        const finalAnnotation = selectDragType === 'move'
-          ? selectionManager.applyMove(selectOrigAnnotation, dx, dy)
-          : selectionManager.applyResize(selectOrigAnnotation, selectDragHandleId, dx, dy);
-        const cmd = new TransformAnnotationCommand(selectOrigAnnotation, finalAnnotation);
+        let finalAnnotations;
+        if (selectDragType === 'move') {
+          finalAnnotations = selectionManager.applyMoveAll(selectOrigAnnotations, dx, dy);
+        } else if (selectOrigAnnotations.length === 1) {
+          finalAnnotations = [selectionManager.applyResize(selectOrigAnnotations[0], selectDragHandleId, dx, dy)];
+        } else {
+          finalAnnotations = selectionManager.applyResizeAll(selectOrigAnnotations, selectOrigCombinedBBox, selectDragHandleId, dx, dy);
+        }
+        const cmd = new BatchTransformCommand(selectOrigAnnotations, finalAnnotations);
         const newAnnotations = history.execute(cmd, store.get('annotations'));
         store.set('annotations', newAnnotations);
-        selectionManager.updateSelected(finalAnnotation);
-        refreshSelectionUI(finalAnnotation);
+        for (const fa of finalAnnotations) selectionManager.updateSelected(fa);
       }
-      selectOrigAnnotation = null;
+      selectOrigAnnotations = [];
+      selectOrigCombinedBBox = null;
+      refreshSelectionUI();
       return;
     }
 
@@ -1250,30 +1298,24 @@ async function init() {
   });
 
   // Refresh selection indicator + handles after any annotation/selection change.
-  function refreshSelectionUI(annotation) {
+  function refreshSelectionUI() {
     const annotations = store.get('annotations');
-    engine.renderAnnotations(annotations, annotation);
-    engine.renderHandles(annotation ? selectionManager.getHandles(annotation) : null);
+    const list = selectionManager.selectedList;
+    engine.renderAnnotations(annotations, list.length > 0 ? list : null);
+    if (list.length === 0) {
+      engine.renderHandles(null);
+    } else if (list.length === 1) {
+      engine.renderHandles(selectionManager.getHandles(list[0]));
+    } else {
+      engine.renderHandles(selectionManager.getHandlesForBBox(selectionManager.getSelectionBBox()));
+    }
   }
 
   // Re-render annotations when state changes.
   store.on('annotations', (annotations) => {
-    const sel = selectionManager.selected;
-    if (sel) {
-      // Keep the selected reference up-to-date (e.g. after undo/redo replaces objects)
-      const updated = annotations.find(a => a.id === sel.id);
-      if (updated) {
-        selectionManager.updateSelected(updated);
-        engine.renderAnnotations(annotations, updated);
-        engine.renderHandles(selectionManager.getHandles(updated));
-      } else {
-        selectionManager.deselect();
-        engine.renderAnnotations(annotations, null);
-        engine.renderHandles(null);
-      }
-    } else {
-      engine.renderAnnotations(annotations, null);
-    }
+    // Sync selection list with fresh annotations (drops any that were deleted).
+    selectionManager.syncWithAnnotations(annotations);
+    refreshSelectionUI();
   });
 
   // Listen for screenshot-ready events (for future async portal flow).

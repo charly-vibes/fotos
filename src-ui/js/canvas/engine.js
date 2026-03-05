@@ -195,6 +195,7 @@ export class CanvasEngine {
     ctx.drawImage(this.#image, 0, 0);
   }
 
+  // selectedAnnotation may be null, a single annotation object, or an array of annotation objects.
   renderAnnotations(annotations, selectedAnnotation = null) {
     this.#annotations = annotations ?? [];
     this.#selectedAnnotation = selectedAnnotation ?? null;
@@ -212,7 +213,10 @@ export class CanvasEngine {
       this.#drawShape(ctx, anno);
     }
     if (this.#selectedAnnotation) {
-      this.#drawSelectionIndicator(ctx, this.#selectedAnnotation);
+      const list = Array.isArray(this.#selectedAnnotation)
+        ? this.#selectedAnnotation
+        : [this.#selectedAnnotation];
+      for (const anno of list) this.#drawSelectionIndicator(ctx, anno);
     }
   }
 

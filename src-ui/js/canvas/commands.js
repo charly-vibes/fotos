@@ -112,6 +112,54 @@ export class LockCommand {
   }
 }
 
+// Batch transform: stores before/after snapshots for multiple annotations.
+// Also works for a single annotation (replaces TransformAnnotationCommand in multi-select flow).
+export class BatchTransformCommand {
+  #pairs; // [{before, after}, ...]
+
+  constructor(befores, afters) {
+    this.#pairs = befores.map((b, i) => ({
+      before: { ...b, points: b.points ? b.points.map(p => ({ ...p })) : [] },
+      after:  { ...afters[i], points: afters[i].points ? afters[i].points.map(p => ({ ...p })) : [] },
+    }));
+  }
+
+  execute(annotations) {
+    const afterMap = new Map(this.#pairs.map(p => [p.after.id, p.after]));
+    return annotations.map(a => afterMap.get(a.id) ?? a);
+  }
+
+  undo(annotations) {
+    const beforeMap = new Map(this.#pairs.map(p => [p.before.id, p.before]));
+    return annotations.map(a => beforeMap.get(a.id) ?? a);
+  }
+}
+
+// Batch delete: removes multiple annotations atomically.
+// items: [{annotation, index}, ...] where index is the position in the array at delete time.
+export class BatchDeleteCommand {
+  #deletedItems; // sorted by descending index for correct splice order
+
+  constructor(items) {
+    this.#deletedItems = [...items].sort((a, b) => b.index - a.index);
+  }
+
+  execute(annotations) {
+    const arr = [...annotations];
+    for (const { index } of this.#deletedItems) arr.splice(index, 1);
+    return arr;
+  }
+
+  undo(annotations) {
+    const arr = [...annotations];
+    // Restore in ascending index order (reverse of descending sort).
+    for (const { annotation, index } of [...this.#deletedItems].reverse()) {
+      arr.splice(index, 0, annotation);
+    }
+    return arr;
+  }
+}
+
 export class AddAnnotationCommand {
   #annotation;
 
