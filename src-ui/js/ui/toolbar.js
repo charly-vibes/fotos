@@ -22,6 +22,7 @@ export function initToolbar(store) {
   // Wire keyboard shortcuts for tools
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const tool = TOOL_SHORTCUTS[e.key.toLowerCase()];
     if (tool) store.set('activeTool', tool);
   });
