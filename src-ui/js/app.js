@@ -620,9 +620,14 @@ async function init() {
 
   // Mouse wheel zoom — centered on cursor position.
   // Use setZoomAndPan() to update both in one render call (avoids artifact traces).
+  // Trackpad pinch arrives as a wheel event with ctrlKey=true and deltaMode=0 (pixels).
+  // Use logarithmic scaling for pinch so the gesture feels proportional; use the
+  // fixed 1.1x step for plain scroll-wheel clicks.
   container.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const factor = (e.ctrlKey && e.deltaMode === 0)
+      ? Math.exp(-e.deltaY / 200)  // trackpad pinch — smooth, pixel-precise
+      : e.deltaY < 0 ? 1.1 : 1 / 1.1;  // mouse wheel — fixed step
     const oldZoom = engine.getZoom();
     const newZoom = Math.max(0.1, Math.min(10.0, oldZoom * factor));
     const pan = engine.getPan();
