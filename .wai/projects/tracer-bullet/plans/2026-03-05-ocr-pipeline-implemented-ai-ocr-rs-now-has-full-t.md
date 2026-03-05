@@ -1,0 +1,1 @@
+OCR pipeline implemented: ai/ocr.rs now has full Tesseract wrapper with tiling (1024px tiles, 100px overlap) and 2x upscaling for images < 2000px. commands/ai.rs refactored to use it. IoU+Levenshtein deduplication handles tile boundary overlap. 20 new unit tests. Remaining: parallelization (3.3), benchmarking (1.2), UI progress messages (5.3).
