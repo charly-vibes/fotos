@@ -4,7 +4,7 @@
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
 import { History, DeleteCommand } from './canvas/history.js';
-import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand, ZOrderCommand } from './canvas/commands.js';
+import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand, ZOrderCommand, LockCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
@@ -226,27 +226,51 @@ async function init() {
 
   activeCanvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    const selected = selectionManager.selected;
-    if (!selected) return;
-
+    const imgPt = engine.screenToImage(e.offsetX, e.offsetY);
     const annotations = store.get('annotations');
-    const idx = annotations.findIndex(a => a.id === selected.id);
+
+    // Check hitTestAll so right-click can also reach locked annotations.
+    const hit = selectionManager.hitTestAll(imgPt.x, imgPt.y, annotations);
+    const target = hit ? hit.annotation : selectionManager.selected;
+    if (!target) return;
+
+    const idx = annotations.findIndex(a => a.id === target.id);
     if (idx === -1) return;
     const n = annotations.length;
+    const isLocked = Boolean(target.locked);
 
     function doZOrder(toIdx) {
-      const cmd = new ZOrderCommand(selected.id, idx, toIdx);
+      const cmd = new ZOrderCommand(target.id, idx, toIdx);
       const newAnnotations = history.execute(cmd, annotations);
       store.set('annotations', newAnnotations);
-      engine.renderAnnotations(newAnnotations, selected);
+      engine.renderAnnotations(newAnnotations, isLocked ? null : target);
     }
 
-    showContextMenu(e.clientX, e.clientY, [
-      { label: 'Bring to Front',   disabled: idx === n - 1, action: () => doZOrder(n - 1) },
-      { label: 'Bring Forward',    disabled: idx === n - 1, action: () => doZOrder(Math.min(idx + 1, n - 1)) },
-      { label: 'Send Backward',    disabled: idx === 0,     action: () => doZOrder(Math.max(idx - 1, 0)) },
-      { label: 'Send to Back',     disabled: idx === 0,     action: () => doZOrder(0) },
-    ]);
+    function doToggleLock() {
+      const cmd = new LockCommand(target.id, !isLocked);
+      const newAnnotations = history.execute(cmd, annotations);
+      store.set('annotations', newAnnotations);
+      if (!isLocked) {
+        // Locking: deselect
+        selectionManager.deselect();
+        refreshSelectionUI(null);
+      }
+      engine.renderAnnotations(newAnnotations, isLocked ? target : null);
+    }
+
+    const items = [];
+    if (!isLocked) {
+      items.push(
+        { label: 'Bring to Front', disabled: idx === n - 1, action: () => doZOrder(n - 1) },
+        { label: 'Bring Forward',  disabled: idx === n - 1, action: () => doZOrder(Math.min(idx + 1, n - 1)) },
+        { label: 'Send Backward',  disabled: idx === 0,     action: () => doZOrder(Math.max(idx - 1, 0)) },
+        { label: 'Send to Back',   disabled: idx === 0,     action: () => doZOrder(0) },
+        'separator',
+      );
+    }
+    items.push({ label: isLocked ? 'Unlock' : 'Lock', action: doToggleLock });
+
+    showContextMenu(e.clientX, e.clientY, items);
   });
 
   // ── Annotation commit ─────────────────────────────────────────────────────────
@@ -798,10 +822,10 @@ async function init() {
       return;
     }
 
-    // Delete — delete selected annotation
+    // Delete — delete selected annotation (skip locked)
     if (e.key === 'Delete') {
       const selected = selectionManager.selected;
-      if (!selected) return;
+      if (!selected || selected.locked) return;
       const annotations = store.get('annotations');
       const index = annotations.findIndex(a => a.id === selected.id);
       if (index === -1) return;
@@ -1134,6 +1158,12 @@ async function init() {
           activeCanvas.style.cursor = 'move';
           return;
         }
+      }
+      // Hovering over a locked annotation — show not-allowed cursor
+      const lockedHit = selectionManager.hitTestAll(imgPt.x, imgPt.y, store.get('annotations'));
+      if (lockedHit && lockedHit.annotation.locked) {
+        activeCanvas.style.cursor = 'not-allowed';
+        return;
       }
       activeCanvas.style.cursor = 'default';
       return;

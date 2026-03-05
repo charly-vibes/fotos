@@ -93,6 +93,25 @@ export class ZOrderCommand {
   }
 }
 
+// Toggle the locked state of a single annotation.
+export class LockCommand {
+  #id;
+  #lock; // true = locking, false = unlocking
+
+  constructor(id, lock) {
+    this.#id = id;
+    this.#lock = lock;
+  }
+
+  execute(annotations) {
+    return annotations.map(a => a.id === this.#id ? { ...a, locked: this.#lock } : a);
+  }
+
+  undo(annotations) {
+    return annotations.map(a => a.id === this.#id ? { ...a, locked: !this.#lock } : a);
+  }
+}
+
 export class AddAnnotationCommand {
   #annotation;
 

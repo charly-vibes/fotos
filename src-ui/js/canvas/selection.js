@@ -29,7 +29,18 @@ export class SelectionManager {
 
   // ── Hit testing ──────────────────────────────────────────────────────────────
 
+  // Hit-test excluding locked annotations (used for selection click).
   hitTest(x, y, annotations) {
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      if (!annotations[i].locked && this.#hitTestOne(x, y, annotations[i])) {
+        return { annotation: annotations[i], index: i };
+      }
+    }
+    return null;
+  }
+
+  // Hit-test including locked annotations (used for context menu right-click).
+  hitTestAll(x, y, annotations) {
     for (let i = annotations.length - 1; i >= 0; i--) {
       if (this.#hitTestOne(x, y, annotations[i])) {
         return { annotation: annotations[i], index: i };
