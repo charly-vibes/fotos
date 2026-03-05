@@ -208,6 +208,8 @@ pub fn run() {
             commands::ai::run_ocr,
             commands::ai::auto_blur_pii,
             commands::ai::analyze_llm,
+            commands::ai::tessdata_available,
+            commands::ai::download_tessdata,
             commands::files::save_image,
             commands::files::composite_image,
             commands::files::copy_to_clipboard,

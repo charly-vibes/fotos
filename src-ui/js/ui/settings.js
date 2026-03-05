@@ -3,6 +3,7 @@
 import {
   getApiKey, setApiKey, deleteApiKey, testApiKey,
   getSettings, setSettings,
+  tessdataAvailable, downloadTessdata,
 } from '../tauri-bridge.js';
 
 const SETTINGS_VERSION = 1;
@@ -55,9 +56,39 @@ function getModal() {
   return document.getElementById('settings-modal');
 }
 
+async function updateTessdataUI(lang) {
+  const tessdataRow = document.getElementById('tessdata-row');
+  const tessdataStatus = document.getElementById('tessdata-status');
+  const downloadBtn = document.getElementById('btn-download-tessdata');
+  if (!tessdataRow) return;
+
+  if (lang === 'eng') {
+    tessdataRow.classList.add('hidden');
+    return;
+  }
+  tessdataRow.classList.remove('hidden');
+  tessdataStatus.textContent = 'Checking…';
+  downloadBtn.classList.add('hidden');
+  try {
+    const available = await tessdataAvailable(lang);
+    if (available) {
+      tessdataStatus.textContent = 'Language data available';
+    } else {
+      tessdataStatus.textContent = 'Language data not downloaded';
+      downloadBtn.classList.remove('hidden');
+    }
+  } catch {
+    tessdataStatus.textContent = '';
+    downloadBtn.classList.remove('hidden');
+  }
+}
+
 export function showSettingsModal() {
   getModal().classList.remove('hidden');
-  loadSettings();
+  loadSettings().then(() => {
+    const lang = document.getElementById('pref-ai-ocrLanguage')?.value ?? 'eng';
+    updateTessdataUI(lang);
+  });
   refreshKeyStatuses();
 }
 
@@ -318,6 +349,40 @@ export function initSettings() {
       console.error('Failed to reset settings:', e);
     }
   });
+
+  // OCR tessdata download
+  const langSelect = modal.querySelector('#pref-ai-ocrLanguage');
+  const downloadBtn = document.getElementById('btn-download-tessdata');
+  const tessdataStatus = document.getElementById('tessdata-status');
+
+  langSelect?.addEventListener('change', (e) => {
+    updateTessdataUI(e.target.value);
+  });
+
+  downloadBtn?.addEventListener('click', async () => {
+    const lang = langSelect.value;
+    downloadBtn.disabled = true;
+    tessdataStatus.textContent = 'Downloading…';
+    try {
+      await downloadTessdata(lang);
+      tessdataStatus.textContent = 'Language data available';
+      downloadBtn.classList.add('hidden');
+    } catch (e) {
+      tessdataStatus.textContent = `Download failed: ${e}`;
+      downloadBtn.disabled = false;
+    }
+  });
+
+  // Listen for background progress events (in case download is triggered elsewhere).
+  if (window.__TAURI__?.event) {
+    window.__TAURI__.event.listen('tessdata:progress', ({ payload }) => {
+      if (payload.lang === langSelect?.value && payload.downloaded === payload.total && payload.total > 0) {
+        tessdataStatus.textContent = 'Language data available';
+        downloadBtn.classList.add('hidden');
+        downloadBtn.disabled = false;
+      }
+    });
+  }
 
   // API key rows
   for (const row of modal.querySelectorAll('.api-key-row')) {

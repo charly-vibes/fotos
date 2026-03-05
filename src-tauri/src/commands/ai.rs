@@ -45,12 +45,30 @@ pub struct LlmResponse {
     pub latency_ms: u64,
 }
 
-/// Resolve the tessdata directory path for the current environment.
-fn resolve_tessdata_path(app: &tauri::AppHandle) -> Result<String, String> {
+/// Resolve the tessdata directory path for the given language.
+/// - "eng" uses the bundled tessdata (or the Flatpak-provided path).
+/// - Other languages use the app data directory where traineddata files
+///   are downloaded on demand.
+fn resolve_tessdata_path(app: &tauri::AppHandle, lang: &str) -> Result<String, String> {
+    use tauri::Manager;
+
+    // Non-English langs always live in the app data directory.
+    if lang != "eng" {
+        let dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Failed to get app data dir: {e}"))?
+            .join("tessdata");
+        return dir
+            .to_str()
+            .ok_or_else(|| "tessdata path contains invalid UTF-8".to_string())
+            .map(|s| s.to_string());
+    }
+
+    // English: use the bundled tessdata.
     if std::env::var("FLATPAK_ID").is_ok() {
         return Ok("/app/share/tessdata".to_string());
     }
-    use tauri::Manager;
     let path: PathBuf = app
         .path()
         .resource_dir()
@@ -60,6 +78,95 @@ fn resolve_tessdata_path(app: &tauri::AppHandle) -> Result<String, String> {
     path.to_str()
         .ok_or_else(|| "tessdata path contains invalid UTF-8".to_string())
         .map(|s| s.to_string())
+}
+
+/// Return whether the traineddata file for `lang` is available locally.
+#[tauri::command]
+pub fn tessdata_available(app: tauri::AppHandle, lang: String) -> Result<bool, String> {
+    use tauri::Manager;
+    if lang == "eng" {
+        // English is always bundled.
+        return Ok(true);
+    }
+    let path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {e}"))?
+        .join("tessdata")
+        .join(format!("{lang}.traineddata"));
+    Ok(path.exists())
+}
+
+#[derive(Clone, serde::Serialize)]
+pub struct TessdataProgressPayload {
+    pub lang: String,
+    pub downloaded: u64,
+    pub total: u64,
+}
+
+/// Download the tessdata file for `lang` from the Tesseract GitHub release.
+/// No-ops if the file is already present. Emits `tessdata:progress` events
+/// with `{ lang, downloaded, total }` (total=0 when content-length is unknown).
+#[tauri::command]
+pub async fn download_tessdata(app: tauri::AppHandle, lang: String) -> Result<(), String> {
+    use tauri::{Emitter, Manager};
+
+    match lang.as_str() {
+        "fra" | "deu" | "spa" => {}
+        other => return Err(format!("Unsupported tessdata language: {other}")),
+    }
+
+    let tessdata_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {e}"))?
+        .join("tessdata");
+
+    std::fs::create_dir_all(&tessdata_dir)
+        .map_err(|e| format!("Failed to create tessdata dir: {e}"))?;
+
+    let dest = tessdata_dir.join(format!("{lang}.traineddata"));
+    if dest.exists() {
+        return Ok(());
+    }
+
+    let url = format!(
+        "https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/{lang}.traineddata"
+    );
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Download request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Download failed: HTTP {}", response.status()));
+    }
+
+    let total = response.content_length().unwrap_or(0);
+
+    // Emit an initial progress event so the UI can show "Downloading…".
+    let _ = app.emit(
+        "tessdata:progress",
+        TessdataProgressPayload { lang: lang.clone(), downloaded: 0, total },
+    );
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read download body: {e}"))?;
+
+    let downloaded = bytes.len() as u64;
+    std::fs::write(&dest, &bytes).map_err(|e| format!("Failed to write tessdata: {e}"))?;
+
+    let _ = app.emit(
+        "tessdata:progress",
+        TessdataProgressPayload { lang: lang.clone(), downloaded, total: downloaded },
+    );
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -74,11 +181,9 @@ pub fn run_ocr(
         .get(&uuid)
         .ok_or_else(|| format!("Image not found: {image_id}"))?;
 
-    let tessdata_path = resolve_tessdata_path(&app)?;
-    let opts = OcrOptions {
-        lang: lang.unwrap_or_else(|| "eng".to_string()),
-        tessdata_path,
-    };
+    let lang = lang.unwrap_or_else(|| "eng".to_string());
+    let tessdata_path = resolve_tessdata_path(&app, &lang)?;
+    let opts = OcrOptions { lang, tessdata_path };
 
     let progress_app = app.clone();
     let on_progress = move |current: u32, total: u32| {
@@ -117,11 +222,8 @@ pub fn auto_blur_pii(
         .get(&uuid)
         .ok_or_else(|| format!("Image not found: {image_id}"))?;
 
-    let tessdata_path = resolve_tessdata_path(&app)?;
-    let opts = OcrOptions {
-        lang: "eng".to_string(),
-        tessdata_path,
-    };
+    let tessdata_path = resolve_tessdata_path(&app, "eng")?;
+    let opts = OcrOptions { lang: "eng".to_string(), tessdata_path };
 
     let ocr_output = crate::ai::ocr::run_ocr(&image, &opts, None)
         .map_err(|e| format!("OCR failed: {e}"))?;

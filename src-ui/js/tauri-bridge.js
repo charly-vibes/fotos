@@ -84,3 +84,11 @@ export async function deleteApiKey(provider) {
 export async function testApiKey(provider) {
   return invoke('test_api_key', { provider });
 }
+
+export async function tessdataAvailable(lang) {
+  return invoke('tessdata_available', { lang });
+}
+
+export async function downloadTessdata(lang) {
+  return invoke('download_tessdata', { lang });
+}
