@@ -160,6 +160,29 @@ pub fn run() {
                 });
             }
 
+            // Restore saved window position and size.
+            {
+                use tauri_plugin_store::StoreExt;
+                if let (Ok(store), Some(win)) = (app.store("prefs.json"), app.get_webview_window("main")) {
+                    if let Some(pos) = store.get("window_pos") {
+                        if let (Some(x), Some(y)) = (
+                            pos.get("x").and_then(|v| v.as_i64()),
+                            pos.get("y").and_then(|v| v.as_i64()),
+                        ) {
+                            let _ = win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        }
+                    }
+                    if let Some(size) = store.get("window_size") {
+                        if let (Some(w), Some(h)) = (
+                            size.get("width").and_then(|v| v.as_u64()),
+                            size.get("height").and_then(|v| v.as_u64()),
+                        ) {
+                            let _ = win.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
+                        }
+                    }
+                }
+            }
+
             let r1 = app.global_shortcut().on_shortcut("ctrl+shift+s", {
                 let handle = handle.clone();
                 let is_capturing = is_capturing.clone();
@@ -222,10 +245,22 @@ pub fn run() {
             commands::settings::delete_api_key,
             commands::settings::test_api_key,
         ])
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { .. } => {
+                use tauri_plugin_store::StoreExt;
+                if let Ok(store) = window.app_handle().store("prefs.json") {
+                    if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+                        store.set("window_pos", serde_json::json!({"x": pos.x, "y": pos.y}));
+                        store.set("window_size",
+                            serde_json::json!({"width": size.width, "height": size.height}));
+                        let _ = store.save();
+                    }
+                }
+            }
+            tauri::WindowEvent::Destroyed => {
                 let _ = std::fs::remove_file(ipc::server::socket_path());
             }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running Fotos");
