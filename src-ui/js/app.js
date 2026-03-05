@@ -191,9 +191,18 @@ async function init() {
         if (!store.get('currentImageId')) { setStatusMessage('No image loaded', false); return; }
         try {
           setStatusMessage('Running OCR...', false);
-          const result = await runOcr(store.get('currentImageId'));
-          store.set('ocrResults', result);
-          setStatusMessage('OCR complete');
+          const unlisten = await listen('ocr:progress', ({ payload }) => {
+            if (payload.total > 1) {
+              setStatusMessage(`Processing tile ${payload.current} of ${payload.total}...`, false);
+            }
+          });
+          try {
+            const result = await runOcr(store.get('currentImageId'));
+            store.set('ocrResults', result);
+            setStatusMessage('OCR complete');
+          } finally {
+            unlisten();
+          }
         } catch (error) {
           setStatusMessage(`OCR failed: ${error}`, false);
         }

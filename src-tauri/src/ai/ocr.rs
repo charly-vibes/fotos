@@ -6,6 +6,8 @@
 ///   OCR each tile independently, translate coordinates, then deduplicate
 ///   overlapping detections using IoU + text similarity.
 use anyhow::Result;
+use rayon::prelude::*;
+use std::sync::atomic::{AtomicU32, Ordering};
 use tesseract::Tesseract;
 
 pub struct OcrRegion {
@@ -36,13 +38,19 @@ const IOU_DEDUP_THRESHOLD: f32 = 0.5;
 
 /// Run OCR on an image. Selects between upscale+single-pass (small images)
 /// and tiled processing (large images).
-pub fn run_ocr(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOutput> {
+///
+/// `on_progress` is called after each tile completes with `(completed, total)`.
+pub fn run_ocr(
+    image: &image::DynamicImage,
+    opts: &OcrOptions,
+    on_progress: Option<&(dyn Fn(u32, u32) + Send + Sync)>,
+) -> Result<OcrOutput> {
     let (w, h) = (image.width(), image.height());
 
     if w <= SMALL_IMAGE_THRESHOLD && h <= SMALL_IMAGE_THRESHOLD {
-        run_upscaled(image, opts)
+        run_upscaled(image, opts, on_progress)
     } else {
-        run_tiled(image, opts)
+        run_tiled(image, opts, on_progress)
     }
 }
 
@@ -50,7 +58,11 @@ pub fn run_ocr(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOutp
 // Upscale strategy
 // ---------------------------------------------------------------------------
 
-fn run_upscaled(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOutput> {
+fn run_upscaled(
+    image: &image::DynamicImage,
+    opts: &OcrOptions,
+    on_progress: Option<&(dyn Fn(u32, u32) + Send + Sync)>,
+) -> Result<OcrOutput> {
     let scale = UPSCALE_FACTOR;
     let upscaled = image.resize(
         image.width() * scale,
@@ -68,6 +80,10 @@ fn run_upscaled(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOut
         r.h = (r.h / scale).max(1);
     }
 
+    if let Some(cb) = on_progress {
+        cb(1, 1);
+    }
+
     let full_text = regions_to_text(&regions);
     Ok(OcrOutput { full_text, regions })
 }
@@ -76,31 +92,42 @@ fn run_upscaled(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOut
 // Tiled strategy
 // ---------------------------------------------------------------------------
 
-fn run_tiled(image: &image::DynamicImage, opts: &OcrOptions) -> Result<OcrOutput> {
+fn run_tiled(
+    image: &image::DynamicImage,
+    opts: &OcrOptions,
+    on_progress: Option<&(dyn Fn(u32, u32) + Send + Sync)>,
+) -> Result<OcrOutput> {
     let img_w = image.width();
     let img_h = image.height();
 
     let xs = tile_positions(img_w, TILE_SIZE, TILE_OVERLAP);
     let ys = tile_positions(img_h, TILE_SIZE, TILE_OVERLAP);
 
-    let mut all_regions: Vec<OcrRegion> = Vec::new();
+    let coords: Vec<(u32, u32)> =
+        ys.iter().flat_map(|&ty| xs.iter().map(move |&tx| (tx, ty))).collect();
+    let total = coords.len() as u32;
+    let done = AtomicU32::new(0);
 
-    for tile_y in &ys {
-        for tile_x in &xs {
+    let results: Result<Vec<Vec<OcrRegion>>> = coords
+        .par_iter()
+        .map(|(tile_x, tile_y)| {
             let tw = TILE_SIZE.min(img_w - tile_x);
             let th = TILE_SIZE.min(img_h - tile_y);
-
             let tile = image.crop_imm(*tile_x, *tile_y, tw, th);
-            let tile_regions = run_tesseract(&tile, opts)?;
-
-            for mut r in tile_regions {
+            let mut regions = run_tesseract(&tile, opts)?;
+            for r in &mut regions {
                 r.x += tile_x;
                 r.y += tile_y;
-                all_regions.push(r);
             }
-        }
-    }
+            let completed = done.fetch_add(1, Ordering::Relaxed) + 1;
+            if let Some(cb) = on_progress {
+                cb(completed, total);
+            }
+            Ok(regions)
+        })
+        .collect();
 
+    let all_regions: Vec<OcrRegion> = results?.into_iter().flatten().collect();
     let regions = deduplicate_regions(all_regions);
     let full_text = regions_to_text(&regions);
     Ok(OcrOutput { full_text, regions })

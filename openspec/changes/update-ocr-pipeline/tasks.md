@@ -9,7 +9,7 @@
 ## 3. Tiled OCR Implementation
 - [x] 3.1 Implement image tiling logic with configurable overlap (min 100px)
 - [x] 3.2 Implement coordinate translation from tile-local to global image space
-- [ ] 3.3 Parallelize tile processing to ensure performance on multi-core systems
+- [x] 3.3 Parallelize tile processing to ensure performance on multi-core systems
 - [x] 3.4 Implement memory-efficient streaming for tiles to prevent OOM on high-res (5K+) images
 
 ## 4. Merging & Deduplication
@@ -20,4 +20,4 @@
 ## 5. Verification & UI
 - [x] 5.1 Create unit tests for tiling and coordinate translation
 - [ ] 5.2 Validate accuracy improvement on "scrambled" samples
-- [ ] 5.3 Update UI status messages to reflect multi-stage progress (e.g., "Processing tile 1 of 4...")
+- [x] 5.3 Update UI status messages to reflect multi-stage progress (e.g., "Processing tile 1 of 4...")

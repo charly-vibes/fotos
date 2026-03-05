@@ -2,6 +2,7 @@ use crate::ai::ocr::OcrOptions;
 use crate::capture::ImageStore;
 use serde::Serialize;
 use std::path::PathBuf;
+use tauri::Emitter;
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -27,6 +28,12 @@ pub struct BlurRegion {
     pub w: u32,
     pub h: u32,
     pub pii_type: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct OcrProgressPayload {
+    pub current: u32,
+    pub total: u32,
 }
 
 #[derive(Serialize)]
@@ -73,8 +80,12 @@ pub fn run_ocr(
         tessdata_path,
     };
 
-    let output =
-        crate::ai::ocr::run_ocr(&image, &opts).map_err(|e| format!("OCR failed: {e}"))?;
+    let progress_app = app.clone();
+    let on_progress = move |current: u32, total: u32| {
+        let _ = progress_app.emit("ocr:progress", OcrProgressPayload { current, total });
+    };
+    let output = crate::ai::ocr::run_ocr(&image, &opts, Some(&on_progress))
+        .map_err(|e| format!("OCR failed: {e}"))?;
 
     let regions = output
         .regions
@@ -112,8 +123,8 @@ pub fn auto_blur_pii(
         tessdata_path,
     };
 
-    let ocr_output =
-        crate::ai::ocr::run_ocr(&image, &opts).map_err(|e| format!("OCR failed: {e}"))?;
+    let ocr_output = crate::ai::ocr::run_ocr(&image, &opts, None)
+        .map_err(|e| format!("OCR failed: {e}"))?;
 
     let pii_matches = crate::ai::pii::detect_pii(&ocr_output.regions)
         .map_err(|e| format!("PII detection failed: {e}"))?;
