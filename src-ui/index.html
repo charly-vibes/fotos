@@ -20,73 +20,73 @@
   </div>
 
   <!-- Top toolbar -->
-  <header id="toolbar">
-    <div class="tool-group" id="capture-tools">
-      <button data-action="capture-region" title="Capture Region (Ctrl+Shift+S)">📐</button>
-      <button data-action="capture-fullscreen" title="Capture Fullscreen (Ctrl+Shift+A)">📷</button>
-      <button data-action="capture-window" title="Capture Window (Ctrl+Shift+W)">🪟</button>
+  <header id="toolbar" role="toolbar" aria-label="Main toolbar">
+    <div class="tool-group" id="capture-tools" role="group" aria-label="Capture tools">
+      <button data-action="capture-region" title="Capture Region (Ctrl+Shift+S)" aria-label="Capture Region" aria-keyshortcuts="Control+Shift+S">📐</button>
+      <button data-action="capture-fullscreen" title="Capture Fullscreen (Ctrl+Shift+A)" aria-label="Capture Fullscreen" aria-keyshortcuts="Control+Shift+A">📷</button>
+      <button data-action="capture-window" title="Capture Window (Ctrl+Shift+W)" aria-label="Capture Window" aria-keyshortcuts="Control+Shift+W">🪟</button>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group" id="annotation-tools">
-      <button data-tool="arrow" title="Arrow (A)">→</button>
-      <button data-tool="rect" title="Rectangle (R)">▭</button>
-      <button data-tool="ellipse" title="Ellipse (E)">○</button>
-      <button data-tool="text" title="Text (T)">T</button>
-      <button data-tool="blur" title="Blur (B)">⊙</button>
-      <button data-tool="step" title="Step Number (N)">1</button>
-      <button data-tool="freehand" title="Freehand (F)">✏</button>
-      <button data-tool="highlight" title="Highlight (H)">🖍</button>
-      <button data-tool="crop" title="Crop (C)">✂</button>
-      <button data-tool="select" title="Select (V)">▲</button>
+    <div class="tool-group" id="annotation-tools" role="group" aria-label="Annotation tools">
+      <button data-tool="arrow" title="Arrow (A)" aria-label="Arrow tool" aria-keyshortcuts="a" aria-pressed="false">→</button>
+      <button data-tool="rect" title="Rectangle (R)" aria-label="Rectangle tool" aria-keyshortcuts="r" aria-pressed="false">▭</button>
+      <button data-tool="ellipse" title="Ellipse (E)" aria-label="Ellipse tool" aria-keyshortcuts="e" aria-pressed="false">○</button>
+      <button data-tool="text" title="Text (T)" aria-label="Text tool" aria-keyshortcuts="t" aria-pressed="false">T</button>
+      <button data-tool="blur" title="Blur (B)" aria-label="Blur tool" aria-keyshortcuts="b" aria-pressed="false">⊙</button>
+      <button data-tool="step" title="Step Number (N)" aria-label="Step number tool" aria-keyshortcuts="n" aria-pressed="false">1</button>
+      <button data-tool="freehand" title="Freehand (F)" aria-label="Freehand tool" aria-keyshortcuts="f" aria-pressed="false">✏</button>
+      <button data-tool="highlight" title="Highlight (H)" aria-label="Highlight tool" aria-keyshortcuts="h" aria-pressed="false">🖍</button>
+      <button data-tool="crop" title="Crop (C)" aria-label="Crop tool" aria-keyshortcuts="c" aria-pressed="false">✂</button>
+      <button data-tool="select" title="Select (V)" aria-label="Select tool" aria-keyshortcuts="v" aria-pressed="false">▲</button>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group" id="style-controls">
-      <div id="color-picker-trigger"></div>
-      <div id="size-picker"></div>
+    <div class="tool-group" id="style-controls" role="group" aria-label="Style controls">
+      <div id="color-picker-trigger" role="button" tabindex="0" aria-label="Color picker" aria-haspopup="true"></div>
+      <div id="size-picker" role="button" tabindex="0" aria-label="Size picker" aria-haspopup="true"></div>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group" id="history-controls">
-      <button data-action="undo" title="Undo (Ctrl+Z)">↶</button>
-      <button data-action="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <div class="tool-group" id="history-controls" role="group" aria-label="History controls">
+      <button data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo" aria-keyshortcuts="Control+z">↶</button>
+      <button data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" aria-keyshortcuts="Control+Shift+z">↷</button>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group" id="zoom-controls">
-      <button data-action="zoom-fit" title="Fit to Page (Ctrl+0)">⊡</button>
-      <button data-action="zoom-100" title="100% (Ctrl+1)">1:1</button>
-      <button data-action="zoom-out" title="Zoom Out (-)">−</button>
-      <button data-action="zoom-in" title="Zoom In (+)">+</button>
+    <div class="tool-group" id="zoom-controls" role="group" aria-label="Zoom controls">
+      <button data-action="zoom-fit" title="Fit to Page (Ctrl+0)" aria-label="Fit to page" aria-keyshortcuts="Control+0">⊡</button>
+      <button data-action="zoom-100" title="100% (Ctrl+1)" aria-label="100% zoom" aria-keyshortcuts="Control+1">1:1</button>
+      <button data-action="zoom-out" title="Zoom Out (-)" aria-label="Zoom out" aria-keyshortcuts="-">−</button>
+      <button data-action="zoom-in" title="Zoom In (+)" aria-label="Zoom in" aria-keyshortcuts="+">+</button>
     </div>
 
     <div class="spacer"></div>
 
-    <div class="tool-group" id="ai-tools">
-      <button data-action="ocr" title="Extract Text (OCR)">OCR</button>
-      <button data-action="auto-blur" title="Auto-Blur PII">🔒</button>
-      <button data-action="ai-analyze" title="AI Analyze">🤖</button>
+    <div class="tool-group" id="ai-tools" role="group" aria-label="AI tools">
+      <button data-action="ocr" title="Extract Text (OCR)" aria-label="Extract text with OCR">OCR</button>
+      <button data-action="auto-blur" title="Auto-Blur PII" aria-label="Auto-blur sensitive information">🔒</button>
+      <button data-action="ai-analyze" title="AI Analyze" aria-label="Analyze with AI">🤖</button>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group" id="output-tools">
-      <button data-action="copy-clipboard" title="Copy (Ctrl+C)">📋</button>
-      <button data-action="save" title="Save (Ctrl+S)">💾</button>
-      <button data-action="save-as" title="Save As">📁</button>
-      <button data-action="export-annotations" title="Export Annotations (Ctrl+E)">📤</button>
-      <button data-action="import-annotations" title="Import Annotations (Ctrl+Shift+E)">📥</button>
+    <div class="tool-group" id="output-tools" role="group" aria-label="Output tools">
+      <button data-action="copy-clipboard" title="Copy (Ctrl+C)" aria-label="Copy to clipboard" aria-keyshortcuts="Control+c">📋</button>
+      <button data-action="save" title="Save (Ctrl+S)" aria-label="Save" aria-keyshortcuts="Control+s">💾</button>
+      <button data-action="save-as" title="Save As" aria-label="Save as">📁</button>
+      <button data-action="export-annotations" title="Export Annotations (Ctrl+E)" aria-label="Export annotations" aria-keyshortcuts="Control+e">📤</button>
+      <button data-action="import-annotations" title="Import Annotations (Ctrl+Shift+E)" aria-label="Import annotations" aria-keyshortcuts="Control+Shift+e">📥</button>
     </div>
 
-    <div class="separator"></div>
+    <div class="separator" role="separator"></div>
 
-    <div class="tool-group">
-      <button data-action="open-settings" title="Settings">⚙</button>
+    <div class="tool-group" role="group" aria-label="Application">
+      <button data-action="open-settings" title="Settings" aria-label="Open settings">⚙</button>
     </div>
   </header>
 

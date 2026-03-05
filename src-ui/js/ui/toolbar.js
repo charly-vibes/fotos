@@ -12,10 +12,12 @@ export function initToolbar(store) {
     });
   });
 
-  // Highlight active tool
+  // Highlight active tool and update aria-pressed
   store.on('activeTool', (tool) => {
     toolbar.querySelectorAll('[data-tool]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tool === tool);
+      const active = btn.dataset.tool === tool;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
   });
 
