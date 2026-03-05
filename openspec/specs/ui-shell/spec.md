@@ -422,7 +422,7 @@ The main window SHALL be resizable, have native window decorations, and be initi
 
 ### Requirement: Preferences UI
 
-The app SHALL provide a settings modal (`settings.js`) accessible from the UI that allows the user to configure preferences across four categories: Capture, Annotation, AI, and UI.
+The app SHALL provide a settings modal (`settings.js`) accessible from the UI that allows the user to configure preferences across four categories: Capture, Annotation, AI, and UI. The modal SHALL also include a read-only About tab displaying application metadata.
 
 #### Scenario: Opening the settings modal
 - **WHEN** the user triggers the settings action (e.g., via menu or toolbar)
@@ -434,7 +434,7 @@ The app SHALL provide a settings modal (`settings.js`) accessible from the UI th
 
 ### Requirement: Settings Modal Content
 
-The settings modal SHALL expose all user preferences defined in the **settings-credentials** spec, organized into the same four sections: Capture, Annotation, AI, and UI. The settings-credentials spec is the single source of truth for key names, types, and default values; this spec defines only the UI presentation.
+The settings modal SHALL expose all user preferences defined in the **settings-credentials** spec, organized into the same four sections: Capture, Annotation, AI, and UI, plus a fifth read-only About tab. The settings-credentials spec is the single source of truth for key names, types, and default values; this spec defines only the UI presentation.
 
 Each preference key defined in settings-credentials SHALL have a corresponding form control in the appropriate settings section. API key entry fields SHALL invoke the `set_api_key` Tauri command to persist keys to the OS keychain. API keys MUST NOT be stored in config files, localStorage, or any frontend-accessible storage.
 
@@ -454,6 +454,27 @@ Each preference key defined in settings-credentials SHALL have a corresponding f
 #### Scenario: Hiding the AI panel
 - **WHEN** the user sets "Show AI panel" to false and saves
 - **THEN** the AI panel MUST be hidden and the canvas MUST use the full available width
+
+### Requirement: About Tab
+
+The settings modal SHALL include an About tab (`data-tab="about"`) that displays read-only application metadata. The following fields SHALL be shown:
+
+| Field | Source | Value |
+|-------|--------|-------|
+| Version | `window.__TAURI__.app.getVersion()` at runtime | e.g., `0.3.0` |
+| Identifier | Static | `io.github.charly.fotos` |
+
+The version field SHALL be populated lazily (on first tab activation) via the Tauri `app.getVersion()` API. The About tab SHALL contain no editable controls and SHALL NOT be affected by "Reset to Defaults".
+
+#### Scenario: About tab shows app version
+- **WHEN** the user opens the settings modal and clicks the About tab
+- **THEN** the version field MUST display the running app version retrieved from `window.__TAURI__.app.getVersion()`
+
+#### Scenario: About tab shows app identifier
+- **WHEN** the user opens the About tab
+- **THEN** the identifier field MUST display `io.github.charly.fotos`
+
+---
 
 ### Requirement: Settings Persistence
 

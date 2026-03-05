@@ -209,6 +209,19 @@ function setRowStatus(row, state, text) {
   el.className = `key-status key-status--${state}`;
 }
 
+// ─── about ────────────────────────────────────────────────────────────────────
+
+async function loadAboutInfo() {
+  const el = document.getElementById('about-version');
+  if (!el || el.textContent !== '—') return;
+  try {
+    const version = await window.__TAURI__.app.getVersion();
+    el.textContent = version;
+  } catch {
+    el.textContent = 'unknown';
+  }
+}
+
 // ─── init ─────────────────────────────────────────────────────────────────────
 
 export function initSettings() {
@@ -233,6 +246,7 @@ export function initSettings() {
 
       // Load API key statuses lazily when that tab is shown
       if (btn.dataset.tab === 'keys') refreshKeyStatuses();
+      if (btn.dataset.tab === 'about') loadAboutInfo();
     });
   });
 
