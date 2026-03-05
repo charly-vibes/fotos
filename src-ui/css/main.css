@@ -646,6 +646,15 @@ body {
   justify-content: flex-end;
 }
 
+/* Export dialog */
+.export-modal-dialog {
+  width: 380px;
+}
+
+.export-modal-footer {
+  gap: 8px;
+}
+
 /* Settings sections */
 .settings-section h3 {
   font-size: 13px;

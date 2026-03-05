@@ -76,6 +76,7 @@
     <div class="separator" role="separator"></div>
 
     <div class="tool-group" id="output-tools" role="group" aria-label="Output tools">
+      <button data-action="show-export" title="Export…" aria-label="Export image or annotations">⬆</button>
       <button data-action="copy-clipboard" title="Copy (Ctrl+C)" aria-label="Copy to clipboard" aria-keyshortcuts="Control+c">📋</button>
       <button data-action="save" title="Save (Ctrl+S)" aria-label="Save" aria-keyshortcuts="Control+s">💾</button>
       <button data-action="save-as" title="Save As" aria-label="Save as">📁</button>
@@ -123,6 +124,41 @@
   <div id="region-picker-overlay" class="hidden">
     <canvas id="region-picker-canvas"></canvas>
     <p id="region-picker-hint">Drag to select · Enter to confirm · Esc to cancel</p>
+  </div>
+
+  <!-- Export dialog -->
+  <div id="export-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="export-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog export-modal-dialog">
+      <div class="modal-header">
+        <h2 id="export-title">Export</h2>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-row">
+          <label class="settings-label" for="export-format">Format</label>
+          <div class="settings-control">
+            <select id="export-format">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-row" id="export-quality-row">
+          <label class="settings-label" for="export-quality">Quality</label>
+          <div class="settings-control settings-control--range">
+            <input type="range" id="export-quality" min="1" max="100" value="85">
+            <span id="export-quality-value">85</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer export-modal-footer">
+        <button id="export-btn-annotations">Export Annotations</button>
+        <button id="export-btn-copy">Copy to Clipboard</button>
+        <button id="export-btn-save">Save to File</button>
+      </div>
+    </div>
   </div>
 
   <!-- Settings modal -->

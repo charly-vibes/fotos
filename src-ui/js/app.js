@@ -11,6 +11,7 @@ import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
 import { initSizePicker } from './ui/size-picker.js';
 import { initAiPanel } from './ui/ai-panel.js';
 import { initSettings, showSettingsModal, applyThemeFromSettings } from './ui/settings.js';
+import { showExportDialog } from './ui/export-dialog.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
@@ -453,6 +454,15 @@ async function init() {
         }
         break;
       }
+
+      case 'show-export':
+        showExportDialog({
+          getImageId: () => store.get('currentImageId'),
+          getAnnotations: () => store.get('annotations') || [],
+          onToast: (msg, type) => showToast(msg, type),
+          onStatus: (msg, autoClear) => setStatusMessage(msg, autoClear),
+        });
+        break;
 
       case 'open-settings':
         showSettingsModal();
