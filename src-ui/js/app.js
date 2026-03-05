@@ -351,14 +351,29 @@ async function init() {
   async function doSaveAs() {
     const currentImageId = store.get('currentImageId');
     if (!currentImageId) { setStatusMessage('No image to save', false); return; }
+
+    const now = new Date();
+    const ts = now.toISOString().replace(/T/, '-').replace(/:/g, '').slice(0, 15);
+    const defaultName = `fotos-${ts}.png`;
+
     const path = await showSaveDialog({
-      filters: [{ name: 'PNG Image', extensions: ['png'] }],
-      defaultPath: 'screenshot.png',
+      filters: [
+        { name: 'PNG Image', extensions: ['png'] },
+        { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+        { name: 'WebP Image', extensions: ['webp'] },
+      ],
+      defaultPath: defaultName,
     });
     if (!path) return; // cancelled
+
+    const ext = path.split('.').pop().toLowerCase();
+    const format = ext === 'jpg' || ext === 'jpeg' ? 'jpeg'
+                 : ext === 'webp' ? 'webp'
+                 : 'png';
+
     try {
       setStatusMessage('Saving...', false);
-      const savedPath = await saveImage(currentImageId, store.get('annotations'), 'png', path);
+      const savedPath = await saveImage(currentImageId, store.get('annotations'), format, path);
       setStatusMessage('');
       showToast(`Saved to ${savedPath}`);
     } catch (error) {
