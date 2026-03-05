@@ -62,6 +62,15 @@ impl ImageStore {
             .cloned()
     }
 
+    pub fn ids(&self) -> Vec<Uuid> {
+        self.images
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .keys()
+            .copied()
+            .collect()
+    }
+
     pub fn remove(&self, id: &Uuid) -> Option<Arc<image::DynamicImage>> {
         self.images
             .write()

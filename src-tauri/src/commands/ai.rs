@@ -49,7 +49,7 @@ pub struct LlmResponse {
 /// - "eng" uses the bundled tessdata (or the Flatpak-provided path).
 /// - Other languages use the app data directory where traineddata files
 ///   are downloaded on demand.
-fn resolve_tessdata_path(app: &tauri::AppHandle, lang: &str) -> Result<String, String> {
+pub fn resolve_tessdata_path(app: &tauri::AppHandle, lang: &str) -> Result<String, String> {
     use tauri::Manager;
 
     // Non-English langs always live in the app data directory.
