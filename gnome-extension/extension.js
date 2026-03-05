@@ -35,6 +35,9 @@ export default class FotosExtension extends Extension {
         this._proxy = null;
         this._pollSource = null;
 
+        // Check whether the Fotos app is installed at all.
+        this._fotosInstalled = Gio.DesktopAppInfo.new(FOTOS_DESKTOP_ID) !== null;
+
         // Create proxy — watches for the service automatically.
         this._proxy = new FotosProxy(
             Gio.DBus.session,
@@ -63,13 +66,17 @@ export default class FotosExtension extends Extension {
         this._indicator.add_child(icon);
 
         // Menu items.
-        const openItem = new PopupMenu.PopupMenuItem(_('Open Fotos'));
-        openItem.connect('activate', () => this._launchAndThen(() => {
+        this._notInstalledItem = new PopupMenu.PopupMenuItem(_('Fotos not installed'));
+        this._notInstalledItem.sensitive = false;
+        this._indicator.menu.addMenuItem(this._notInstalledItem);
+
+        this._openItem = new PopupMenu.PopupMenuItem(_('Open Fotos'));
+        this._openItem.connect('activate', () => this._launchAndThen(() => {
             this._proxy.ActivateRemote((_p, err) => {
                 if (err) logError(err, 'Fotos: Activate failed');
             });
         }));
-        this._indicator.menu.addMenuItem(openItem);
+        this._indicator.menu.addMenuItem(this._openItem);
 
         this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -135,6 +142,8 @@ export default class FotosExtension extends Extension {
         }
 
         this._proxy = null;
+        this._notInstalledItem = null;
+        this._openItem = null;
         this._regionItem = null;
         this._fullscreenItem = null;
         this._settings = null;
@@ -160,8 +169,10 @@ export default class FotosExtension extends Extension {
     _updateSensitivity() {
         if (!this._regionItem || !this._fullscreenItem)
             return;
-        this._regionItem.sensitive = this._fotosOnBus;
-        this._fullscreenItem.sensitive = this._fotosOnBus;
+        this._notInstalledItem.visible = !this._fotosInstalled;
+        this._openItem.visible = this._fotosInstalled;
+        this._regionItem.sensitive = this._fotosInstalled && this._fotosOnBus;
+        this._fullscreenItem.sensitive = this._fotosInstalled && this._fotosOnBus;
     }
 
     /**

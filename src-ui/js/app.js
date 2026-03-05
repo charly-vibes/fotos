@@ -268,6 +268,14 @@ async function init() {
         showSettingsModal();
         break;
 
+      case 'export-annotations':
+        await doExportAnnotations();
+        break;
+
+      case 'import-annotations':
+        await doImportAnnotations();
+        break;
+
       case 'capture-window':
       case 'auto-blur':
       case 'ai-analyze':
@@ -434,6 +442,24 @@ async function init() {
   let isPanning = false;
 
   document.addEventListener('keydown', async (e) => {
+    // Ctrl+C — copy to clipboard
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === 'c') {
+      if (!store.get('currentImageId')) return;
+      e.preventDefault();
+      try {
+        setStatusMessage('Copying to clipboard...', false);
+        const imagePromise = compositeImage(store.get('currentImageId'), store.get('annotations') || [])
+          .then(base64PngToBlob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePromise })]);
+        setStatusMessage('');
+        showToast('Copied to clipboard');
+      } catch (error) {
+        setStatusMessage('');
+        showToast(`Copy failed: ${error}`, 'error');
+      }
+      return;
+    }
+
     // Ctrl+Shift+S — region capture
     if (e.ctrlKey && e.shiftKey && e.key === 'S') {
       e.preventDefault();
