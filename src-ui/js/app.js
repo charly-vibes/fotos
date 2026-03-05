@@ -8,6 +8,7 @@ import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand } from '.
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
+import { initSizePicker } from './ui/size-picker.js';
 import { initAiPanel } from './ui/ai-panel.js';
 import { initSettings, showSettingsModal, applyThemeFromSettings } from './ui/settings.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
@@ -141,6 +142,7 @@ async function init() {
 
   initToolbar(store);
   initColorPicker(store);
+  initSizePicker(store);
   initAiPanel(store);
   initSettings();
   applyThemeFromSettings();
