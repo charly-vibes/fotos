@@ -14,7 +14,6 @@ import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, sho
 import { RegionPicker } from './ui/region-picker.js';
 
 let messageTimeout = null;
-let toastTimeout = null;
 
 function setStatusMessage(message, autoClear = true) {
   const statusMsg = document.getElementById('status-message');
@@ -26,14 +25,33 @@ function setStatusMessage(message, autoClear = true) {
 }
 
 function showToast(message, type = 'success') {
-  const toast = document.getElementById('toast');
-  if (toastTimeout) clearTimeout(toastTimeout);
-  toast.textContent = message;
-  toast.className = type;
-  // Force reflow so transition fires even if toast was already visible.
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2800);
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const text = document.createElement('span');
+  text.textContent = message;
+
+  const dismiss = document.createElement('button');
+  dismiss.className = 'toast-dismiss';
+  dismiss.setAttribute('aria-label', 'Dismiss');
+  dismiss.textContent = '✕';
+
+  toast.append(text, dismiss);
+  container.appendChild(toast);
+
+  // Trigger enter transition
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('show'));
+  });
+
+  function removeToast() {
+    toast.classList.remove('show');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }
+
+  dismiss.addEventListener('click', removeToast);
+  setTimeout(removeToast, 4000);
 }
 
 function base64PngToBlob(b64) {
