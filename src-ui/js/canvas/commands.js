@@ -65,6 +65,34 @@ export class TransformAnnotationCommand {
   }
 }
 
+// Reorder annotation from oldIndex to newIndex (after insert-at semantics).
+export class ZOrderCommand {
+  #id;
+  #fromIndex;
+  #toIndex;
+
+  constructor(id, fromIndex, toIndex) {
+    this.#id = id;
+    this.#fromIndex = fromIndex;
+    this.#toIndex = toIndex;
+  }
+
+  #reorder(annotations, from, to) {
+    const arr = [...annotations];
+    const [item] = arr.splice(from, 1);
+    arr.splice(to, 0, item);
+    return arr;
+  }
+
+  execute(annotations) {
+    return this.#reorder(annotations, this.#fromIndex, this.#toIndex);
+  }
+
+  undo(annotations) {
+    return this.#reorder(annotations, this.#toIndex, this.#fromIndex);
+  }
+}
+
 export class AddAnnotationCommand {
   #annotation;
 

@@ -4,7 +4,7 @@
 import { store } from './state.js';
 import { CanvasEngine } from './canvas/engine.js';
 import { History, DeleteCommand } from './canvas/history.js';
-import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand } from './canvas/commands.js';
+import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand, ZOrderCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
@@ -186,6 +186,70 @@ async function init() {
   initAiPanel(store);
   initSettings();
   applyThemeFromSettings();
+
+  // ── Context menu ─────────────────────────────────────────────────────────────
+
+  let contextMenu = null;
+
+  function closeContextMenu() {
+    if (contextMenu) { contextMenu.remove(); contextMenu = null; }
+  }
+
+  function showContextMenu(x, y, items) {
+    closeContextMenu();
+    const menu = document.createElement('div');
+    menu.id = 'context-menu';
+    items.forEach(item => {
+      if (item === 'separator') {
+        const sep = document.createElement('div');
+        sep.className = 'context-menu-separator';
+        menu.appendChild(sep);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.className = 'context-menu-item';
+      btn.textContent = item.label;
+      if (item.disabled) btn.disabled = true;
+      btn.addEventListener('click', () => { closeContextMenu(); item.action(); });
+      menu.appendChild(btn);
+    });
+    document.body.appendChild(menu);
+    // Keep menu on screen
+    const mw = 170, mh = items.length * 32;
+    menu.style.left = `${Math.min(x, window.innerWidth - mw)}px`;
+    menu.style.top  = `${Math.min(y, window.innerHeight - mh)}px`;
+    contextMenu = menu;
+  }
+
+  document.addEventListener('click', closeContextMenu);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeContextMenu(); });
+
+  activeCanvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const selected = selectionManager.selected;
+    if (!selected) return;
+
+    const annotations = store.get('annotations');
+    const idx = annotations.findIndex(a => a.id === selected.id);
+    if (idx === -1) return;
+    const n = annotations.length;
+
+    function doZOrder(toIdx) {
+      const cmd = new ZOrderCommand(selected.id, idx, toIdx);
+      const newAnnotations = history.execute(cmd, annotations);
+      store.set('annotations', newAnnotations);
+      engine.renderAnnotations(newAnnotations, selected);
+    }
+
+    showContextMenu(e.clientX, e.clientY, [
+      { label: 'Bring to Front',   disabled: idx === n - 1, action: () => doZOrder(n - 1) },
+      { label: 'Bring Forward',    disabled: idx === n - 1, action: () => doZOrder(Math.min(idx + 1, n - 1)) },
+      { label: 'Send Backward',    disabled: idx === 0,     action: () => doZOrder(Math.max(idx - 1, 0)) },
+      { label: 'Send to Back',     disabled: idx === 0,     action: () => doZOrder(0) },
+    ]);
+  });
+
+  // ── Annotation commit ─────────────────────────────────────────────────────────
 
   // Commit an annotation: execute the command, update state, notify recent colors.
   function commitAnnotation(annotation) {
