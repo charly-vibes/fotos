@@ -1,6 +1,6 @@
 ## 1. Research & Refactoring
 - [x] 1.1 Implement Tesseract wrapper in `ai/ocr.rs` using logic extracted from `commands/ai.rs` (replacing current stub)
-- [ ] 1.2 Benchmark current OCR accuracy on complex layouts for baseline
+- [x] 1.2 Benchmark current OCR accuracy on complex layouts for baseline
 
 ## 2. Image Preprocessing
 - [x] 2.1 Implement image upscaling (2x) using `image` crate filters
