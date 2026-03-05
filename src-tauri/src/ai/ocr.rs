@@ -533,4 +533,73 @@ mod tests {
         let text = regions_to_text(&regions);
         assert!(text.contains('\n'), "expected newline, got: {text}");
     }
+
+    // --- reading-order validation for complex / "scrambled" layouts ---
+
+    /// Two-column layout: regions arrive in arbitrary order (as Tesseract might
+    /// return them in a single-pass scan across the full image width).
+    /// After tiling, coordinates are correct; regions_to_text must reconstruct
+    /// reading order: left-to-right within each row, top-to-bottom across rows.
+    #[test]
+    fn text_reconstruction_two_column_layout() {
+        // Col 1 (x≈0):   "Left"  row 0, "Text"  row 1
+        // Col 2 (x≈300): "Right" row 0, "Side"  row 1
+        // Arrive in scrambled (Tesseract single-pass) order.
+        let regions = vec![
+            region("Right", 300, 0, 60, 20, 90.0),
+            region("Side", 300, 30, 60, 20, 90.0),
+            region("Left", 0, 0, 60, 20, 90.0),
+            region("Text", 0, 30, 60, 20, 90.0),
+        ];
+        let text = regions_to_text(&regions);
+        let pos = |w: &str| text.find(w).unwrap_or_else(|| panic!("'{w}' missing in: {text}"));
+        // Within the same row, left column precedes right column.
+        assert!(pos("Left") < pos("Right"), "row 0: left col should precede right col");
+        assert!(pos("Text") < pos("Side"), "row 1: left col should precede right col");
+        // Row 0 precedes row 1 for each column.
+        assert!(pos("Left") < pos("Text"), "col 1: top word should precede bottom word");
+        assert!(pos("Right") < pos("Side"), "col 2: top word should precede bottom word");
+    }
+
+    /// Sidebar layout: a narrow navigation column (x≈0) beside main content (x≈200).
+    /// Regions arrive out of order; result must preserve per-column reading order.
+    #[test]
+    fn text_reconstruction_sidebar_layout() {
+        let regions = vec![
+            region("File", 10, 10, 60, 18, 90.0),
+            region("The", 200, 10, 40, 18, 90.0),
+            region("Edit", 10, 35, 60, 18, 90.0),
+            region("quick", 250, 10, 50, 18, 90.0),
+            region("View", 10, 60, 60, 18, 90.0),
+            region("brown", 310, 10, 55, 18, 90.0),
+        ];
+        let text = regions_to_text(&regions);
+        for word in &["File", "Edit", "View", "The", "quick", "brown"] {
+            assert!(text.contains(word), "'{word}' missing in: {text}");
+        }
+        // Sidebar items share the same y-band as main content; left col comes first.
+        let pos = |w: &str| text.find(w).unwrap();
+        assert!(pos("File") < pos("The"), "sidebar 'File' should precede main 'The'");
+        // Sidebar items are top-to-bottom.
+        assert!(pos("File") < pos("Edit"), "File should precede Edit in sidebar");
+        assert!(pos("Edit") < pos("View"), "Edit should precede View in sidebar");
+    }
+
+    /// Unsorted input (worst-case Tesseract scramble): regions arrive in reverse
+    /// spatial order. regions_to_text must still produce correct reading order.
+    #[test]
+    fn text_reconstruction_reverse_input_order() {
+        // Three lines, fed in reverse order.
+        let mut regions = vec![
+            region("Third", 0, 80, 60, 20, 90.0),
+            region("Second", 0, 40, 60, 20, 90.0),
+            region("First", 0, 0, 60, 20, 90.0),
+        ];
+        // Shuffle to worst case.
+        regions.reverse();
+        let text = regions_to_text(&regions);
+        let pos = |w: &str| text.find(w).unwrap_or_else(|| panic!("'{w}' missing in: {text}"));
+        assert!(pos("First") < pos("Second"), "First should precede Second");
+        assert!(pos("Second") < pos("Third"), "Second should precede Third");
+    }
 }

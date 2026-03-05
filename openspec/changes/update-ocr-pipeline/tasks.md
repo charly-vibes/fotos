@@ -19,5 +19,5 @@
 
 ## 5. Verification & UI
 - [x] 5.1 Create unit tests for tiling and coordinate translation
-- [ ] 5.2 Validate accuracy improvement on "scrambled" samples
+- [x] 5.2 Validate accuracy improvement on "scrambled" samples
 - [x] 5.3 Update UI status messages to reflect multi-stage progress (e.g., "Processing tile 1 of 4...")
