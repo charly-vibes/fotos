@@ -7,7 +7,7 @@ import { History, DeleteCommand } from './canvas/history.js';
 import { AddAnnotationCommand, CropCommand, TransformAnnotationCommand } from './canvas/commands.js';
 import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
-import { initColorPicker } from './ui/color-picker.js';
+import { initColorPicker, notifyColorApplied } from './ui/color-picker.js';
 import { initAiPanel } from './ui/ai-panel.js';
 import { initSettings, showSettingsModal, applyThemeFromSettings } from './ui/settings.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
@@ -144,6 +144,15 @@ async function init() {
   initAiPanel(store);
   initSettings();
   applyThemeFromSettings();
+
+  // Commit an annotation: execute the command, update state, notify recent colors.
+  function commitAnnotation(annotation) {
+    const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
+    store.set('annotations', newAnnotations);
+    engine.renderAnnotations(newAnnotations);
+    notifyColorApplied(annotation.strokeColor, annotation.fillColor);
+    return newAnnotations;
+  }
 
   // Track the current image data URL so crop undo can reload it.
   let currentImageDataUrl = null;
@@ -765,9 +774,7 @@ async function init() {
         locked: false,
       };
       store.set('nextStepNumber', stepNumber + 1);
-      const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
-      store.set('annotations', newAnnotations);
-      engine.renderAnnotations(newAnnotations);
+      commitAnnotation(annotation);
       return;
     }
 
@@ -871,9 +878,7 @@ async function init() {
         createdAt: new Date().toISOString(),
         locked: false,
       };
-      const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
-      store.set('annotations', newAnnotations);
-      engine.renderAnnotations(newAnnotations);
+      commitAnnotation(annotation);
     }
 
     ta.addEventListener('blur', commitText, { once: true });
@@ -972,9 +977,7 @@ async function init() {
       engine.renderActive(null);
       if (r.width < 2 || r.height < 2) return;
       const annotation = buildCommittedShape(tool, drawStartImg, imgPt, r);
-      const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
-      store.set('annotations', newAnnotations);
-      engine.renderAnnotations(newAnnotations);
+      commitAnnotation(annotation);
       return;
     }
 
@@ -998,9 +1001,7 @@ async function init() {
         locked: false,
       };
       freehandPoints = [];
-      const newAnnotations = history.execute(new AddAnnotationCommand(annotation), store.get('annotations'));
-      store.set('annotations', newAnnotations);
-      engine.renderAnnotations(newAnnotations);
+      commitAnnotation(annotation);
       return;
     }
 

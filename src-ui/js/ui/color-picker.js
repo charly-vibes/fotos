@@ -1,23 +1,30 @@
 /// Color picker — color and opacity selection for annotation tools.
 
-const RECENT_KEY = 'fotos-recent-colors';
+const RECENT_STROKE_KEY = 'fotos-recent-stroke';
+const RECENT_FILL_KEY = 'fotos-recent-fill';
 const MAX_RECENT = 8;
 
-function loadRecent() {
+function loadRecent(key) {
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
-function saveRecent(colors) {
-  localStorage.setItem(RECENT_KEY, JSON.stringify(colors));
+function saveRecent(key, colors) {
+  localStorage.setItem(key, JSON.stringify(colors));
 }
 
 function addToRecent(color, current) {
   if (!color || color === 'transparent') return current;
   const deduped = [color, ...current.filter(c => c !== color)];
   return deduped.slice(0, MAX_RECENT);
+}
+
+// Exported so app.js can call when an annotation is committed.
+let _onAnnotationCommit = null;
+export function notifyColorApplied(strokeColor, fillColor) {
+  if (_onAnnotationCommit) _onAnnotationCommit(strokeColor, fillColor);
 }
 
 export function initColorPicker(store) {
@@ -54,9 +61,13 @@ export function initColorPicker(store) {
       <div class="cp-label">Opacity <span id="cp-opacity-val">100%</span></div>
       <input type="range" id="cp-opacity" min="0" max="100" value="100" step="1">
     </div>
-    <div class="cp-section" id="cp-recent-section">
-      <div class="cp-label">Recent</div>
-      <div id="cp-recent-colors"></div>
+    <div class="cp-section" id="cp-recent-stroke-section">
+      <div class="cp-label">Recent stroke</div>
+      <div id="cp-recent-stroke-colors"></div>
+    </div>
+    <div class="cp-section" id="cp-recent-fill-section">
+      <div class="cp-label">Recent fill</div>
+      <div id="cp-recent-fill-colors"></div>
     </div>
   `;
   document.body.appendChild(popup);
@@ -68,28 +79,48 @@ export function initColorPicker(store) {
   const fillTransparentBtn = popup.querySelector('#cp-fill-transparent');
   const opacitySlider = popup.querySelector('#cp-opacity');
   const opacityVal = popup.querySelector('#cp-opacity-val');
-  const recentRow = popup.querySelector('#cp-recent-colors');
-  const recentSection = popup.querySelector('#cp-recent-section');
+  const recentStrokeRow = popup.querySelector('#cp-recent-stroke-colors');
+  const recentStrokeSection = popup.querySelector('#cp-recent-stroke-section');
+  const recentFillRow = popup.querySelector('#cp-recent-fill-colors');
+  const recentFillSection = popup.querySelector('#cp-recent-fill-section');
 
-  let recentColors = loadRecent();
+  let recentStroke = loadRecent(RECENT_STROKE_KEY);
+  let recentFill = loadRecent(RECENT_FILL_KEY);
 
-  function renderRecent() {
-    recentRow.innerHTML = '';
-    recentSection.style.display = recentColors.length ? '' : 'none';
-    recentColors.forEach(color => {
+  function renderRecentRow(colors, rowEl, sectionEl, onClick) {
+    rowEl.innerHTML = '';
+    sectionEl.style.display = colors.length ? '' : 'none';
+    colors.forEach(color => {
       const swatch = document.createElement('button');
       swatch.className = 'cp-recent-swatch';
       swatch.style.background = color;
       swatch.title = color;
-      swatch.addEventListener('click', () => {
-        store.set('strokeColor', color);
-        recentColors = addToRecent(color, recentColors);
-        saveRecent(recentColors);
-        renderRecent();
-      });
-      recentRow.appendChild(swatch);
+      swatch.addEventListener('click', () => onClick(color));
+      rowEl.appendChild(swatch);
     });
   }
+
+  function renderRecent() {
+    renderRecentRow(recentStroke, recentStrokeRow, recentStrokeSection, (color) => {
+      store.set('strokeColor', color);
+    });
+    renderRecentRow(recentFill, recentFillRow, recentFillSection, (color) => {
+      store.set('fillColor', color);
+    });
+  }
+
+  // Called by app.js when an annotation is actually committed.
+  _onAnnotationCommit = (stroke, fill) => {
+    if (stroke && stroke !== 'transparent') {
+      recentStroke = addToRecent(stroke, recentStroke);
+      saveRecent(RECENT_STROKE_KEY, recentStroke);
+    }
+    if (fill && fill !== 'transparent') {
+      recentFill = addToRecent(fill, recentFill);
+      saveRecent(RECENT_FILL_KEY, recentFill);
+    }
+    renderRecent();
+  };
 
   function updateFillSwatch(fillColor) {
     const isTransparent = fillColor === 'transparent';
@@ -131,20 +162,10 @@ export function initColorPicker(store) {
   strokeInput.addEventListener('input', () => {
     store.set('strokeColor', strokeInput.value);
   });
-  strokeInput.addEventListener('change', () => {
-    recentColors = addToRecent(strokeInput.value, recentColors);
-    saveRecent(recentColors);
-    renderRecent();
-  });
 
   // Fill color changes
   fillInput.addEventListener('input', () => {
     store.set('fillColor', fillInput.value);
-  });
-  fillInput.addEventListener('change', () => {
-    recentColors = addToRecent(fillInput.value, recentColors);
-    saveRecent(recentColors);
-    renderRecent();
   });
 
   // Transparent fill toggle
