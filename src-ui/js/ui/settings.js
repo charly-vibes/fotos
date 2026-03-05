@@ -106,6 +106,16 @@ function applyToForm({ capture, annotation, ai, ui }) {
   setVal('pref-ui-theme', ui.theme);
   setCheck('pref-ui-showAiPanel', ui.showAiPanel);
   setCheck('pref-ui-showStatusBar', ui.showStatusBar);
+  applyTheme(ui.theme ?? 'system');
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'system') {
+    root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
 }
 
 function readFromForm() {
@@ -224,6 +234,13 @@ async function loadAboutInfo() {
 
 // ─── init ─────────────────────────────────────────────────────────────────────
 
+export async function applyThemeFromSettings() {
+  try {
+    const settings = await getSettings();
+    applyTheme(settings.ui?.theme ?? 'system');
+  } catch { /* ignore, defaults to system theme */ }
+}
+
 export function initSettings() {
   const modal = getModal();
 
@@ -257,6 +274,11 @@ export function initSettings() {
     scheduleSave();
   });
 
+  // Apply theme immediately on change (before debounced save)
+  modal.querySelector('#pref-ui-theme').addEventListener('change', (e) => {
+    applyTheme(e.target.value);
+  });
+
   // Auto-save on any preference change
   modal.querySelectorAll(
     '.settings-tab-panel select, ' +
@@ -266,8 +288,7 @@ export function initSettings() {
     '.settings-tab-panel input[type="color"], ' +
     '.settings-tab-panel input[type="checkbox"]'
   ).forEach(el => {
-    const event = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'change';
-    el.addEventListener(event, scheduleSave);
+    el.addEventListener('change', scheduleSave);
   });
 
   // Reset to Defaults

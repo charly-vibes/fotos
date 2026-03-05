@@ -9,7 +9,7 @@ import { SelectionManager } from './canvas/selection.js';
 import { initToolbar } from './ui/toolbar.js';
 import { initColorPicker } from './ui/color-picker.js';
 import { initAiPanel } from './ui/ai-panel.js';
-import { initSettings, showSettingsModal } from './ui/settings.js';
+import { initSettings, showSettingsModal, applyThemeFromSettings } from './ui/settings.js';
 import { ping, takeScreenshot, cropImage, runOcr, saveImage, compositeImage, showSaveDialog, exportAnnotations, importAnnotations } from './tauri-bridge.js';
 import { RegionPicker } from './ui/region-picker.js';
 
@@ -143,6 +143,7 @@ async function init() {
   initColorPicker(store);
   initAiPanel(store);
   initSettings();
+  applyThemeFromSettings();
 
   // Track the current image data URL so crop undo can reload it.
   let currentImageDataUrl = null;
