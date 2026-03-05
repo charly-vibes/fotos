@@ -92,6 +92,7 @@ pub struct UiSettings {
     pub theme: String,
     pub show_ai_panel: bool,
     pub show_status_bar: bool,
+    pub smooth_zoom: bool,
 }
 
 impl Default for UiSettings {
@@ -100,6 +101,7 @@ impl Default for UiSettings {
             theme: "system".to_string(),
             show_ai_panel: true,
             show_status_bar: true,
+            smooth_zoom: true,
         }
     }
 }

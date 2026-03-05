@@ -45,6 +45,7 @@ const DEFAULTS = {
     theme: 'system',
     showAiPanel: true,
     showStatusBar: true,
+    smoothZoom: true,
   },
 };
 
@@ -120,6 +121,7 @@ function applyToForm(rawSettings) {
   setVal('pref-ui-theme', ui.theme);
   setCheck('pref-ui-showAiPanel', ui.showAiPanel);
   setCheck('pref-ui-showStatusBar', ui.showStatusBar);
+  setCheck('pref-ui-smoothZoom', ui.smoothZoom ?? true);
   applyTheme(ui.theme ?? 'system');
 }
 
@@ -165,6 +167,7 @@ function readFromForm() {
       theme: getVal('pref-ui-theme'),
       showAiPanel: getCheck('pref-ui-showAiPanel'),
       showStatusBar: getCheck('pref-ui-showStatusBar'),
+      smoothZoom: getCheck('pref-ui-smoothZoom'),
     },
   };
 }

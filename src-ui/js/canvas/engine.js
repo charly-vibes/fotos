@@ -145,6 +145,24 @@ export class CanvasEngine {
     return this.#zoom;
   }
 
+  // Calculate what fitToPage() would produce without applying it.
+  calcFitZoomAndPan() {
+    if (!this.#image) return { zoom: this.#zoom, panX: this.#panX, panY: this.#panY };
+    const cw = this.#container.clientWidth;
+    const ch = this.#container.clientHeight;
+    const pad = 20;
+    const z = Math.max(0.05, Math.min(
+      (cw - pad * 2) / this.#image.width,
+      (ch - pad * 2) / this.#image.height,
+      10.0,
+    ));
+    return {
+      zoom: z,
+      panX: (cw - this.#image.width * z) / 2,
+      panY: (ch - this.#image.height * z) / 2,
+    };
+  }
+
   get hasImage() { return this.#image !== null; }
   get imageWidth() { return this.#image?.width ?? 0; }
   get imageHeight() { return this.#image?.height ?? 0; }

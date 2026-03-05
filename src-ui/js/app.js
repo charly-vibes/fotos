@@ -66,6 +66,46 @@ function updateZoomStatus(zoom) {
   document.getElementById('status-zoom').textContent = `${Math.round(zoom * 100)}%`;
 }
 
+// Smooth zoom — lazy-read from settings checkbox each time so it respects live changes.
+function isSmoothZoomEnabled() {
+  const el = document.getElementById('pref-ui-smoothZoom');
+  return el ? el.checked : true;
+}
+
+let zoomAnimRaf = null;
+let zoomAnimTarget = null; // { zoom, panX, panY }
+
+// Animate from current engine state to (targetZoom, targetPanX, targetPanY) over 150 ms.
+// If already animating, the in-flight animation is cancelled and a new one starts from
+// wherever the engine currently is — so rapid calls smoothly chain.
+function animateZoomTo(targetZoom, targetPanX, targetPanY, engine) {
+  if (zoomAnimRaf) cancelAnimationFrame(zoomAnimRaf);
+  zoomAnimTarget = { zoom: targetZoom, panX: targetPanX, panY: targetPanY };
+
+  const startZoom = engine.getZoom();
+  const startPan = engine.getPan();
+  const startTime = performance.now();
+  const DURATION = 150;
+
+  function step(now) {
+    const t = Math.min((now - startTime) / DURATION, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+    const z = startZoom + (targetZoom - startZoom) * ease;
+    const px = startPan.x + (targetPanX - startPan.x) * ease;
+    const py = startPan.y + (targetPanY - startPan.y) * ease;
+    engine.setZoomAndPan(z, px, py);
+    updateZoomStatus(z);
+    if (t < 1) {
+      zoomAnimRaf = requestAnimationFrame(step);
+    } else {
+      zoomAnimRaf = null;
+      zoomAnimTarget = null;
+    }
+  }
+
+  zoomAnimRaf = requestAnimationFrame(step);
+}
+
 // Normalize a drag rect so width/height are always positive.
 function normalizeRect(x1, y1, x2, y2) {
   return {
@@ -270,29 +310,61 @@ async function init() {
         }
         break;
 
-      case 'zoom-fit':
-        updateZoomStatus(engine.fitToPage());
-        break;
-
-      case 'zoom-100': {
-        const cont = document.getElementById('canvas-container');
-        engine.setZoomAndPan(1.0,
-          (cont.clientWidth - engine.imageWidth) / 2,
-          (cont.clientHeight - engine.imageHeight) / 2,
-        );
-        updateZoomStatus(1.0);
+      case 'zoom-fit': {
+        const fit = engine.calcFitZoomAndPan();
+        if (isSmoothZoomEnabled()) {
+          animateZoomTo(fit.zoom, fit.panX, fit.panY, engine);
+        } else {
+          engine.fitToPage();
+          updateZoomStatus(engine.getZoom());
+        }
         break;
       }
 
-      case 'zoom-in':
-        engine.setZoom(engine.getZoom() * 1.25);
-        updateZoomStatus(engine.getZoom());
+      case 'zoom-100': {
+        const cont2 = document.getElementById('canvas-container');
+        const tpx = (cont2.clientWidth - engine.imageWidth) / 2;
+        const tpy = (cont2.clientHeight - engine.imageHeight) / 2;
+        if (isSmoothZoomEnabled()) {
+          animateZoomTo(1.0, tpx, tpy, engine);
+        } else {
+          engine.setZoomAndPan(1.0, tpx, tpy);
+          updateZoomStatus(1.0);
+        }
         break;
+      }
 
-      case 'zoom-out':
-        engine.setZoom(engine.getZoom() / 1.25);
-        updateZoomStatus(engine.getZoom());
+      case 'zoom-in': {
+        const newZI = Math.min(10.0, engine.getZoom() * 1.25);
+        const panI = engine.getPan();
+        const cI = document.getElementById('canvas-container');
+        const cx = cI.clientWidth / 2, cy = cI.clientHeight / 2;
+        const npxI = cx - (cx - panI.x) * (newZI / engine.getZoom());
+        const npyI = cy - (cy - panI.y) * (newZI / engine.getZoom());
+        if (isSmoothZoomEnabled()) {
+          animateZoomTo(newZI, npxI, npyI, engine);
+        } else {
+          engine.setZoomAndPan(newZI, npxI, npyI);
+          updateZoomStatus(newZI);
+        }
         break;
+      }
+
+      case 'zoom-out': {
+        const newZO = Math.max(0.1, engine.getZoom() / 1.25);
+        const panO = engine.getPan();
+        const cO = document.getElementById('canvas-container');
+        const cxO = cO.clientWidth / 2, cyO = cO.clientHeight / 2;
+        const npxO = cxO - (cxO - panO.x) * (newZO / engine.getZoom());
+        const npyO = cyO - (cyO - panO.y) * (newZO / engine.getZoom());
+        if (isSmoothZoomEnabled()) {
+          animateZoomTo(newZO, npxO, npyO, engine);
+        } else {
+          engine.setZoomAndPan(newZO, npxO, npyO);
+          updateZoomStatus(newZO);
+        }
+        break;
+      }
 
       case 'open-settings':
         showSettingsModal();
@@ -564,36 +636,67 @@ async function init() {
     // Ctrl+0 — fit to page
     if (e.ctrlKey && e.key === '0') {
       e.preventDefault();
-      updateZoomStatus(engine.fitToPage());
+      const fit0 = engine.calcFitZoomAndPan();
+      if (isSmoothZoomEnabled()) {
+        animateZoomTo(fit0.zoom, fit0.panX, fit0.panY, engine);
+      } else {
+        engine.fitToPage();
+        updateZoomStatus(engine.getZoom());
+      }
       return;
     }
 
     // Ctrl+1 — 100% zoom, image centered
     if (e.ctrlKey && e.key === '1') {
       e.preventDefault();
-      const cw = document.getElementById('canvas-container').clientWidth;
-      const ch = document.getElementById('canvas-container').clientHeight;
-      engine.setZoomAndPan(1.0,
-        (cw - engine.imageWidth) / 2,
-        (ch - engine.imageHeight) / 2,
-      );
-      updateZoomStatus(1.0);
+      const cw1 = document.getElementById('canvas-container').clientWidth;
+      const ch1 = document.getElementById('canvas-container').clientHeight;
+      const tpx1 = (cw1 - engine.imageWidth) / 2;
+      const tpy1 = (ch1 - engine.imageHeight) / 2;
+      if (isSmoothZoomEnabled()) {
+        animateZoomTo(1.0, tpx1, tpy1, engine);
+      } else {
+        engine.setZoomAndPan(1.0, tpx1, tpy1);
+        updateZoomStatus(1.0);
+      }
       return;
     }
 
-    // +/= — zoom in
+    // +/= — zoom in (centered on canvas centre)
     if (!e.ctrlKey && !e.shiftKey && !e.altKey && (e.key === '+' || e.key === '=')) {
       e.preventDefault();
-      engine.setZoom(engine.getZoom() * 1.25);
-      updateZoomStatus(engine.getZoom());
+      const oldZ = engine.getZoom();
+      const newZ = Math.min(10.0, oldZ * 1.25);
+      const panK = engine.getPan();
+      const cK = document.getElementById('canvas-container');
+      const cxK = cK.clientWidth / 2, cyK = cK.clientHeight / 2;
+      const npxK = cxK - (cxK - panK.x) * (newZ / oldZ);
+      const npyK = cyK - (cyK - panK.y) * (newZ / oldZ);
+      if (isSmoothZoomEnabled()) {
+        animateZoomTo(newZ, npxK, npyK, engine);
+      } else {
+        engine.setZoomAndPan(newZ, npxK, npyK);
+        updateZoomStatus(newZ);
+      }
       return;
     }
 
-    // - — zoom out
+    // - — zoom out (centered on canvas centre)
     if (!e.ctrlKey && !e.shiftKey && !e.altKey && e.key === '-') {
       e.preventDefault();
-      engine.setZoom(engine.getZoom() / 1.25);
-      updateZoomStatus(engine.getZoom());
+      const oldZM = engine.getZoom();
+      const newZM = Math.max(0.1, oldZM / 1.25);
+      const panM = engine.getPan();
+      const cM = document.getElementById('canvas-container');
+      const cxM = cM.clientWidth / 2, cyM = cM.clientHeight / 2;
+      const npxM = cxM - (cxM - panM.x) * (newZM / oldZM);
+      const npyM = cyM - (cyM - panM.y) * (newZM / oldZM);
+      if (isSmoothZoomEnabled()) {
+        animateZoomTo(newZM, npxM, npyM, engine);
+      } else {
+        engine.setZoomAndPan(newZM, npxM, npyM);
+        updateZoomStatus(newZM);
+      }
       return;
     }
 
@@ -670,16 +773,28 @@ async function init() {
   // fixed 1.1x step for plain scroll-wheel clicks.
   container.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const factor = (e.ctrlKey && e.deltaMode === 0)
+    const isPinch = e.ctrlKey && e.deltaMode === 0;
+    const factor = isPinch
       ? Math.exp(-e.deltaY / 200)  // trackpad pinch — smooth, pixel-precise
       : e.deltaY < 0 ? 1.1 : 1 / 1.1;  // mouse wheel — fixed step
-    const oldZoom = engine.getZoom();
+
+    // For animated zoom, compute the target from the current (or in-flight target)
+    // zoom to avoid lag on rapid discrete clicks.
+    const oldZoom = zoomAnimTarget ? zoomAnimTarget.zoom : engine.getZoom();
     const newZoom = Math.max(0.1, Math.min(10.0, oldZoom * factor));
-    const pan = engine.getPan();
+    const pan = zoomAnimTarget ? { x: zoomAnimTarget.panX, y: zoomAnimTarget.panY } : engine.getPan();
     const newPanX = e.offsetX - (e.offsetX - pan.x) * (newZoom / oldZoom);
     const newPanY = e.offsetY - (e.offsetY - pan.y) * (newZoom / oldZoom);
-    engine.setZoomAndPan(newZoom, newPanX, newPanY);
-    updateZoomStatus(newZoom);
+
+    // Pinch gestures provide many events — apply directly for max responsiveness.
+    // Discrete scroll clicks benefit from animation.
+    if (!isPinch && isSmoothZoomEnabled()) {
+      animateZoomTo(newZoom, newPanX, newPanY, engine);
+    } else {
+      if (zoomAnimRaf) { cancelAnimationFrame(zoomAnimRaf); zoomAnimRaf = null; zoomAnimTarget = null; }
+      engine.setZoomAndPan(newZoom, newPanX, newPanY);
+      updateZoomStatus(newZoom);
+    }
   }, { passive: false });
 
   // ── Drawing / interaction state ─────────────────────────────────────────────
