@@ -6,8 +6,8 @@ TBD - created by archiving change add-gnome-shell-integration. Update Purpose af
 ### Requirement: D-Bus Service
 
 On Linux, Fotos SHALL expose a D-Bus service on the session bus under the well-known name
-`io.github.charly.Fotos` at object path `/io/github/charly/Fotos` with interface
-`io.github.charly.Fotos`. The service SHALL be started during app initialization and SHALL fail
+`io.github.charly-vibes.Fotos` at object path `/io/github/charly_vibes/Fotos` with interface
+`io.github.charly-vibes.Fotos`. The service SHALL be started during app initialization and SHALL fail
 non-fatally (log a warning and continue) if the session bus is unavailable.
 
 The interface SHALL expose:
@@ -73,7 +73,7 @@ D-Bus service is not present on the session bus.
 
 #### Scenario: Clicking Open Fotos when not running
 - **WHEN** the Fotos D-Bus service is NOT present and the user clicks "Open Fotos"
-- **THEN** the extension MUST launch Fotos via `Gio.DesktopAppInfo` using the `io.github.charly.fotos.desktop` entry
+- **THEN** the extension MUST launch Fotos via `Gio.DesktopAppInfo` using the `io.github.charly-vibes.fotos.desktop` entry
 - **THEN** after Fotos registers on the bus (within a reasonable startup timeout), the extension MUST call `Activate()`
 
 #### Scenario: Capture menu items disabled when Fotos is not running
@@ -152,12 +152,12 @@ the GNOME 45+ ES module format (`export default class ... extends Extension`).
 
 ### Requirement: Flatpak D-Bus Permission
 
-The Fotos Flatpak manifest SHALL include `--own-name=io.github.charly.Fotos` in its `finish-args`
+The Fotos Flatpak manifest SHALL include `--own-name=io.github.charly-vibes.Fotos` in its `finish-args`
 so that the sandboxed app is permitted to own that well-known name on the session bus.
 
 #### Scenario: Fotos Flatpak registers D-Bus service
 - **WHEN** Fotos is installed as a Flatpak and launched
-- **THEN** the `io.github.charly.Fotos` service MUST appear on the session bus
+- **THEN** the `io.github.charly-vibes.Fotos` service MUST appear on the session bus
 - **THEN** the GNOME extension MUST be able to call `Activate()` and `TakeScreenshot()`
 
 ---

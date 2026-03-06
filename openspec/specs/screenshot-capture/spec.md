@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capability spec for the screenshot capture layer of Fotos (`io.github.charly.fotos`). Covers platform detection, capture backends, capture modes, result handling, and monitor enumeration.
+Capability spec for the screenshot capture layer of Fotos (`io.github.charly-vibes.fotos`). Covers platform detection, capture backends, capture modes, result handling, and monitor enumeration.
 
 ## Requirements
 

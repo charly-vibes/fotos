@@ -1,6 +1,6 @@
 # Canvas Engine
 
-Capability spec for the HTML5 Canvas 2D rendering engine used by Fotos (`io.github.charly.fotos`).
+Capability spec for the HTML5 Canvas 2D rendering engine used by Fotos (`io.github.charly-vibes.fotos`).
 
 ## Purpose
 

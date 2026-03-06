@@ -73,5 +73,5 @@ Initial release.
 - OCR via Tesseract (text extraction from screenshots)
 - Copy-to-clipboard and save operations
 - Custom HTML title bar
-- Flatpak packaging (`io.github.charly.fotos`)
+- Flatpak packaging (`io.github.charly-vibes.fotos`)
 - MCP server (`fotos-mcp`) for AI tool integration

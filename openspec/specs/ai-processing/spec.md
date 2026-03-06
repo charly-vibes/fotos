@@ -2,7 +2,7 @@
 
 ## Purpose
 
-AI-powered processing features for Fotos (io.github.charly.fotos), including OCR text extraction, PII detection and auto-blur, and LLM vision analysis with multiple provider support.
+AI-powered processing features for Fotos (io.github.charly-vibes.fotos), including OCR text extraction, PII detection and auto-blur, and LLM vision analysis with multiple provider support.
 ## Requirements
 ### Requirement: OCR Text Extraction via Tesseract
 The system SHALL extract text from screenshot images using Tesseract OCR. The OCR engine SHALL return both the full extracted text and per-word bounding boxes with confidence scores.

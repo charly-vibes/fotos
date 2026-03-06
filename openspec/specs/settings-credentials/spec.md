@@ -1,6 +1,6 @@
 # Capability: Settings & Credentials
 
-User preferences and API key management for Fotos (`io.github.charly.fotos`).
+User preferences and API key management for Fotos (`io.github.charly-vibes.fotos`).
 
 ## Purpose
 

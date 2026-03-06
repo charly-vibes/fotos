@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.charly.fotos</id>
+  <id>io.github.charly-vibes.fotos</id>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
@@ -25,15 +25,15 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.charly.fotos.desktop</launchable>
+  <launchable type="desktop-id">io.github.charly-vibes.fotos.desktop</launchable>
 
-  <url type="homepage">https://github.com/charly/fotos</url>
-  <url type="bugtracker">https://github.com/charly/fotos/issues</url>
+  <url type="homepage">https://github.com/charly-vibes/fotos</url>
+  <url type="bugtracker">https://github.com/charly-vibes/fotos/issues</url>
 
   <screenshots>
     <screenshot type="default">
       <caption>Annotating a screenshot with arrows and text</caption>
-      <image>https://raw.githubusercontent.com/charly/fotos/main/docs/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/charly-vibes/fotos/main/docs/screenshot.png</image>
     </screenshot>
   </screenshots>
 

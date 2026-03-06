@@ -10,7 +10,7 @@ pub struct FotosService {
     is_capturing: Arc<AtomicBool>,
 }
 
-#[interface(name = "io.github.charly.Fotos")]
+#[interface(name = "io.github.charly-vibes.Fotos")]
 impl FotosService {
     async fn activate(&self) -> zbus::fdo::Result<()> {
         if let Some(window) = self.app.get_webview_window("main") {
@@ -46,8 +46,8 @@ impl FotosService {
 pub async fn start_service(app: AppHandle, is_capturing: Arc<AtomicBool>) -> anyhow::Result<()> {
     let service = FotosService { app, is_capturing };
     let _conn = zbus::connection::Builder::session()?
-        .name("io.github.charly.Fotos")?
-        .serve_at("/io/github/charly/Fotos", service)?
+        .name("io.github.charly-vibes.Fotos")?
+        .serve_at("/io/github/charly_vibes/Fotos", service)?
         .build()
         .await?;
     // Keep the connection alive for the lifetime of the app.

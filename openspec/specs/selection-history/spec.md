@@ -1,6 +1,6 @@
 # Selection & History
 
-Capability spec for annotation selection, manipulation, and undo/redo history in Fotos (`io.github.charly.fotos`).
+Capability spec for annotation selection, manipulation, and undo/redo history in Fotos (`io.github.charly-vibes.fotos`).
 
 ## Purpose
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The UI shell provides the top-level layout, toolbar, panels, dialogs, status bar, keyboard shortcuts, and theme support for Fotos (io.github.charly.fotos). It is the app's chrome surrounding the annotation canvas. Built with vanilla HTML/CSS/JS and ES modules, no web frameworks.
+The UI shell provides the top-level layout, toolbar, panels, dialogs, status bar, keyboard shortcuts, and theme support for Fotos (io.github.charly-vibes.fotos). It is the app's chrome surrounding the annotation canvas. Built with vanilla HTML/CSS/JS and ES modules, no web frameworks.
 
 ## Requirements
 
@@ -462,7 +462,7 @@ The settings modal SHALL include an About tab (`data-tab="about"`) that displays
 | Field | Source | Value |
 |-------|--------|-------|
 | Version | `window.__TAURI__.app.getVersion()` at runtime | e.g., `0.3.0` |
-| Identifier | Static | `io.github.charly.fotos` |
+| Identifier | Static | `io.github.charly-vibes.fotos` |
 
 The version field SHALL be populated lazily (on first tab activation) via the Tauri `app.getVersion()` API. The About tab SHALL contain no editable controls and SHALL NOT be affected by "Reset to Defaults".
 
@@ -472,7 +472,7 @@ The version field SHALL be populated lazily (on first tab activation) via the Ta
 
 #### Scenario: About tab shows app identifier
 - **WHEN** the user opens the About tab
-- **THEN** the identifier field MUST display `io.github.charly.fotos`
+- **THEN** the identifier field MUST display `io.github.charly-vibes.fotos`
 
 ---
 

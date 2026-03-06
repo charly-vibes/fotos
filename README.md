@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo-512.svg" width="128" height="128" alt="Fotos logo">
+</p>
+
 # Fotos
 
 AI-powered screenshot capture, annotation, and analysis tool built with Tauri 2.
@@ -20,7 +24,7 @@ AI-powered screenshot capture, annotation, and analysis tool built with Tauri 2.
 - System tray icon for quick capture access
 - Structured logging via `RUST_LOG`
 - Vanilla JS/HTML/CSS frontend with HTML5 Canvas — no web frameworks
-- Flatpak packaging (`io.github.charly.fotos`)
+- Flatpak packaging (`io.github.charly-vibes.fotos`)
 
 ## Installation
 
@@ -102,7 +106,7 @@ Key features currently in the works (tracked via `beads`):
 - `src-mcp/` — MCP server binary (`fotos-mcp`, JSON-RPC 2.0 over stdio)
 - `src-ui/` — Frontend (vanilla JS, HTML5 Canvas, ES modules)
 - `openspec/specs/` — 9 capability specs defining all requirements
-- `flatpak/` — Flatpak manifest (`io.github.charly.fotos`)
+- `flatpak/` — Flatpak manifest (`io.github.charly-vibes.fotos`)
 
 ## License
 

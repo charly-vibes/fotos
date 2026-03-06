@@ -41,7 +41,7 @@ cask "fotos" do
     "~/.local/share/fotos",
     "~/Library/Application Support/fotos",
     "~/Library/Caches/fotos",
-    "~/Library/Preferences/io.github.charly.fotos.plist",
+    "~/Library/Preferences/io.github.charly-vibes.fotos.plist",
   ]
 end
 """

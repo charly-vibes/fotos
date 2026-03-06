@@ -37,7 +37,7 @@ To use Fotos with Claude Desktop, add the following to your `claude_desktop_conf
   "mcpServers": {
     "fotos": {
       "command": "flatpak",
-      "args": ["run", "--command=fotos-mcp", "io.github.charly.fotos"],
+      "args": ["run", "--command=fotos-mcp", "io.github.charly-vibes.fotos"],
       "env": {
         "RUST_LOG": "info"
       }

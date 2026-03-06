@@ -1,6 +1,6 @@
 # File Operations
 
-Capability for saving, exporting, loading, and clipboard operations on screenshots and annotations in Fotos (`io.github.charly.fotos`).
+Capability for saving, exporting, loading, and clipboard operations on screenshots and annotations in Fotos (`io.github.charly-vibes.fotos`).
 
 ## Purpose
 

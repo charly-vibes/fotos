@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="blue" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#4A7FD4"/>
+      <stop offset="100%" stop-color="#1B3A6B"/>
+    </radialGradient>
+    <radialGradient id="red" cx="45%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#E85D4A"/>
+      <stop offset="100%" stop-color="#A82818"/>
+    </radialGradient>
+    <radialGradient id="yellow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#F5D547"/>
+      <stop offset="100%" stop-color="#D4A017"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Warm canvas -->
+  <rect width="512" height="512" rx="48" fill="#F0E2C0"/>
+
+  <!-- Corner brackets — screenshot capture -->
+  <path d="M 64 112 L 64 64 L 112 64" fill="none" stroke="#1A1A1A" stroke-width="12" stroke-linecap="square"/>
+  <path d="M 400 64 L 448 64 L 448 112" fill="none" stroke="#1A1A1A" stroke-width="12" stroke-linecap="square"/>
+  <path d="M 64 400 L 64 448 L 112 448" fill="none" stroke="#1A1A1A" stroke-width="12" stroke-linecap="square"/>
+  <path d="M 400 448 L 448 448 L 448 400" fill="none" stroke="#1A1A1A" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Diagonal line — passes through the whole composition -->
+  <line x1="104" y1="408" x2="408" y2="104" stroke="#1A1A1A" stroke-width="6" opacity="0.45"/>
+
+  <!-- Red stroked rectangle — annotation highlight, overlaps with blue circle -->
+  <rect x="112" y="136" width="160" height="120" rx="8" fill="none" stroke="url(#red)" stroke-width="10"/>
+
+  <!-- Blue circle — dominant, overlaps rectangle and sits on the line -->
+  <circle cx="256" cy="224" r="104" fill="url(#blue)"/>
+
+  <!-- Yellow triangle — arrow/callout, tucked under the circle -->
+  <polygon points="144,312 208,264 208,360" fill="url(#yellow)"/>
+
+  <!-- Dark rectangle — text label block, overlaps circle and triangle -->
+  <rect x="224" y="288" width="152" height="80" rx="8" fill="#1A1A1A" opacity="0.72"/>
+
+  <!-- Small red triangle — marker, connected to dark rectangle -->
+  <polygon points="328,248 360,288 296,288" fill="none" stroke="#E85D4A" stroke-width="7"/>
+</svg>

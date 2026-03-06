@@ -2,7 +2,7 @@
 Name=Fotos
 Comment=AI-powered screenshot capture, annotation, and analysis
 Exec=fotos
-Icon=io.github.charly.fotos
+Icon=io.github.charly-vibes.fotos
 Terminal=false
 Type=Application
 Categories=Graphics;Utility;

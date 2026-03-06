@@ -3,7 +3,7 @@
 ## Purpose
 Fotos is an AI-first screenshot capture, annotation, and analysis tool built with Tauri 2. It enables users to capture screenshots, annotate them with drawing tools on an HTML5 Canvas, and run AI analysis (OCR, PII detection, LLM vision). It exposes an MCP server so AI agents can programmatically capture, annotate, and analyze screenshots.
 
-App identifier: `io.github.charly.fotos`
+App identifier: `io.github.charly-vibes.fotos`
 
 ## Tech Stack
 - Tauri 2 (Rust backend + native webview)

@@ -15,7 +15,7 @@ The MCP server SHALL be built as a standalone binary named `fotos-mcp`, separate
 - **THEN** the binary SHALL start, initialize the MCP protocol handler, and begin accepting JSON-RPC 2.0 messages on stdin/stdout
 
 #### Scenario: Flatpak invocation
-- **WHEN** an MCP host invokes `flatpak run --command=fotos-mcp io.github.charly.fotos`
+- **WHEN** an MCP host invokes `flatpak run --command=fotos-mcp io.github.charly-vibes.fotos`
 - **THEN** the `fotos-mcp` binary SHALL start within the Flatpak sandbox and operate identically to a direct invocation
 
 ### Requirement: Stdio Transport

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Annotation tools for Fotos (io.github.charly.fotos) -- the drawing and manipulation tools available in the canvas annotation toolbar. Each tool is activated by a single-key shortcut and produces a serializable annotation object stored in the central annotations array.
+Annotation tools for Fotos (io.github.charly-vibes.fotos) -- the drawing and manipulation tools available in the canvas annotation toolbar. Each tool is activated by a single-key shortcut and produces a serializable annotation object stored in the central annotations array.
 
 ## Requirements
 
