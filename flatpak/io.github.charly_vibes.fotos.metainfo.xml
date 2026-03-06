@@ -57,6 +57,19 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="0.3.0" date="2026-03-06">
+      <description>
+        <p>Major release adding AI vision, MCP tool support, and GNOME integration.</p>
+        <ul>
+          <li>LLM vision analysis via Claude, OpenAI, and Gemini providers</li>
+          <li>Full MCP tool support with IPC bridge to main app</li>
+          <li>GNOME Shell extension with panel indicator and global keybindings</li>
+          <li>Window position and size persist between sessions</li>
+          <li>Export dialog with format selection (PNG, JPEG, WebP)</li>
+          <li>Complete annotation tool set: arrow, rectangle, ellipse, text, blur, step numbers, freehand, highlight, crop</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.0" date="2025-01-01">
       <description>
         <p>OCR bounding boxes, PII auto-blur, and font embedding for PNG export.</p>
