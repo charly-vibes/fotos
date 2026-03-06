@@ -78,7 +78,7 @@ install format="flatpak": (package format)
     case "{{format}}" in
         flatpak)
             flatpak remote-add --user --no-gpg-verify --if-not-exists fotos-local "$(pwd)/.flatpak-repo"
-            flatpak install --user --reinstall fotos-local io.github.charly-vibes.fotos
+            flatpak install --user --reinstall fotos-local io.github.charly_vibes.fotos
             ;;
         deb)
             sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb

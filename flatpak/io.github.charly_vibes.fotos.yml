@@ -1,4 +1,4 @@
-app-id: io.github.charly-vibes.fotos
+app-id: io.github.charly_vibes.fotos
 runtime: org.gnome.Platform
 runtime-version: '48'
 sdk: org.gnome.Sdk
@@ -19,7 +19,7 @@ finish-args:
   - --talk-name=org.freedesktop.portal.Screenshot
   - --talk-name=org.freedesktop.portal.GlobalShortcuts
   - --talk-name=org.freedesktop.secrets
-  - --own-name=io.github.charly-vibes.Fotos
+  - --own-name=io.github.charly_vibes.Fotos
 
 modules:
   - name: intltool
@@ -142,10 +142,10 @@ modules:
       - cargo build --release --offline
       - install -Dm755 target/release/fotos /app/bin/fotos
       - install -Dm755 target/release/fotos-mcp /app/bin/fotos-mcp
-      - install -Dm644 flatpak/io.github.charly-vibes.fotos.desktop /app/share/applications/io.github.charly-vibes.fotos.desktop
-      - install -Dm644 src-tauri/icons/32x32.png /app/share/icons/hicolor/32x32/apps/io.github.charly-vibes.fotos.png
-      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.charly-vibes.fotos.png
-      - install -Dm644 src-tauri/icons/256x256.png /app/share/icons/hicolor/256x256/apps/io.github.charly-vibes.fotos.png
-      - install -Dm644 src-tauri/icons/512x512.png /app/share/icons/hicolor/512x512/apps/io.github.charly-vibes.fotos.png
-      - install -Dm644 src-tauri/icons/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.charly-vibes.fotos.svg
-      - install -Dm644 flatpak/io.github.charly-vibes.fotos.metainfo.xml /app/share/metainfo/io.github.charly-vibes.fotos.metainfo.xml
+      - install -Dm644 flatpak/io.github.charly_vibes.fotos.desktop /app/share/applications/io.github.charly_vibes.fotos.desktop
+      - install -Dm644 src-tauri/icons/32x32.png /app/share/icons/hicolor/32x32/apps/io.github.charly_vibes.fotos.png
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.charly_vibes.fotos.png
+      - install -Dm644 src-tauri/icons/256x256.png /app/share/icons/hicolor/256x256/apps/io.github.charly_vibes.fotos.png
+      - install -Dm644 src-tauri/icons/512x512.png /app/share/icons/hicolor/512x512/apps/io.github.charly_vibes.fotos.png
+      - install -Dm644 src-tauri/icons/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.charly_vibes.fotos.svg
+      - install -Dm644 flatpak/io.github.charly_vibes.fotos.metainfo.xml /app/share/metainfo/io.github.charly_vibes.fotos.metainfo.xml

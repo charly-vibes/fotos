@@ -23,7 +23,7 @@ if [ -n "$DIRTY" ]; then
     exit 1
 fi
 
-MANIFEST="flatpak/io.github.charly-vibes.fotos.yml"
+MANIFEST="flatpak/io.github.charly_vibes.fotos.yml"
 BUILD_DIR=".flatpak-build"
 REPO_DIR=".flatpak-repo"
 
@@ -34,4 +34,4 @@ echo "Updating repository summary..."
 flatpak build-update-repo "$REPO_DIR"
 
 echo "Done. Install with:"
-echo "  flatpak install --user file://\$PWD/$REPO_DIR io.github.charly-vibes.fotos"
+echo "  flatpak install --user file://\$PWD/$REPO_DIR io.github.charly_vibes.fotos"

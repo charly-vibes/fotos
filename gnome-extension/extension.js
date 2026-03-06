@@ -8,16 +8,16 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-const FOTOS_BUS_NAME = 'io.github.charly-vibes.Fotos';
+const FOTOS_BUS_NAME = 'io.github.charly_vibes.Fotos';
 const FOTOS_OBJECT_PATH = '/io/github/charly_vibes/Fotos';
-const FOTOS_DESKTOP_ID = 'io.github.charly-vibes.fotos.desktop';
+const FOTOS_DESKTOP_ID = 'io.github.charly_vibes.fotos.desktop';
 const LAUNCH_POLL_INTERVAL_MS = 200;
 const LAUNCH_POLL_TIMEOUT_MS = 5000;
 
 // Inline interface XML — extensions cannot read files at runtime.
 const FOTOS_IFACE_XML = `
 <node>
-  <interface name="io.github.charly-vibes.Fotos">
+  <interface name="io.github.charly_vibes.Fotos">
     <method name="Activate"/>
     <method name="TakeScreenshot">
       <arg type="s" direction="in" name="mode"/>

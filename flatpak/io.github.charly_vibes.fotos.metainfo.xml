@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.charly-vibes.fotos</id>
+  <id>io.github.charly_vibes.fotos</id>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
@@ -25,7 +25,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.charly-vibes.fotos.desktop</launchable>
+  <launchable type="desktop-id">io.github.charly_vibes.fotos.desktop</launchable>
 
   <url type="homepage">https://github.com/charly-vibes/fotos</url>
   <url type="bugtracker">https://github.com/charly-vibes/fotos/issues</url>
