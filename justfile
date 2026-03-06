@@ -218,8 +218,8 @@ gnome-schema:
 
 # Install the GNOME extension to the user profile
 gnome-install: gnome-schema
-    install -d ~/.local/share/gnome-shell/extensions/fotos@io.github.charly
-    cp -r gnome-extension/. ~/.local/share/gnome-shell/extensions/fotos@io.github.charly/
+    install -d ~/.local/share/gnome-shell/extensions/fotos@io.github.charly-vibes
+    cp -r gnome-extension/. ~/.local/share/gnome-shell/extensions/fotos@io.github.charly-vibes/
 
 # Pack the GNOME extension into a zip for distribution
 gnome-pack: gnome-schema

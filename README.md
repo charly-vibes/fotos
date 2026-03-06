@@ -59,7 +59,7 @@ A panel indicator extension is included in `gnome-extension/`. It adds a camera 
 just gnome-install   # compile schema + copy to ~/.local/share/gnome-shell/extensions/
 ```
 
-Then enable it in the GNOME Extensions app (or `gnome-extensions enable fotos@io.github.charly`).
+Then enable it in the GNOME Extensions app (or `gnome-extensions enable fotos@io.github.charly-vibes`).
 On Wayland you must log out and back in after installing. On X11, press `Alt+F2` → `r` to reload Shell.
 
 ### Global keybindings

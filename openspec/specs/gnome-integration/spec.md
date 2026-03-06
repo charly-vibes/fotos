@@ -135,7 +135,7 @@ call the D-Bus service if Fotos is running, or launch Fotos first if not.
 ### Requirement: Extension Metadata and Compatibility
 
 The extension SHALL declare compatibility with GNOME Shell versions 45, 46, 47, and 48 in its
-`metadata.json`. The extension UUID SHALL be `fotos@io.github.charly`. The extension MUST use
+`metadata.json`. The extension UUID SHALL be `fotos@io.github.charly-vibes`. The extension MUST use
 the GNOME 45+ ES module format (`export default class ... extends Extension`).
 
 > **Compatibility note**: The extension MUST be manually tested against each declared GNOME Shell
@@ -167,11 +167,11 @@ so that the sandboxed app is permitted to own that well-known name on the sessio
 The `justfile` SHALL include three GNOME extension recipes:
 
 - `gnome-schema` — compile the GSettings XML schema (`glib-compile-schemas gnome-extension/schemas/`)
-- `gnome-install` — run `gnome-schema` then copy `gnome-extension/` to `~/.local/share/gnome-shell/extensions/fotos@io.github.charly/`
+- `gnome-install` — run `gnome-schema` then copy `gnome-extension/` to `~/.local/share/gnome-shell/extensions/fotos@io.github.charly-vibes/`
 - `gnome-pack` — run `gnome-schema` then package the extension as `fotos-gnome-extension.zip` for distribution
 
 #### Scenario: gnome-install deploys the extension
 - **WHEN** the developer runs `just gnome-install`
-- **THEN** the compiled schema and extension files MUST be present under `~/.local/share/gnome-shell/extensions/fotos@io.github.charly/`
+- **THEN** the compiled schema and extension files MUST be present under `~/.local/share/gnome-shell/extensions/fotos@io.github.charly-vibes/`
 - **THEN** the extension MUST be loadable by GNOME Shell after re-enabling it in the Extensions app (X11: `Alt+F2` → `r`; Wayland: log out and back in)
 
