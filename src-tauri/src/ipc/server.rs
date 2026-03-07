@@ -318,24 +318,22 @@ async fn dispatch(app: &tauri::AppHandle, command: &str, params: Value) -> anyho
                     llm::analyze(&image_b64, &prompt_text,
                         &llm::LlmProvider::Claude { model: ai.claude_model }, &key).await?
                 }
-                "openai" => {
-                    let key = crate::credentials::get_api_key("openai")
-                        .map_err(|_| anyhow::anyhow!("No OpenAI API key configured"))?;
-                    llm::analyze(&image_b64, &prompt_text,
-                        &llm::LlmProvider::OpenAI { model: ai.openai_model }, &key).await?
-                }
                 "gemini" => {
                     let key = crate::credentials::get_api_key("gemini")
                         .map_err(|_| anyhow::anyhow!("No Gemini API key configured"))?;
                     llm::analyze(&image_b64, &prompt_text,
                         &llm::LlmProvider::Gemini { model: ai.gemini_model }, &key).await?
                 }
-                "ollama" => {
-                    crate::ai::ollama::analyze(&image_b64, &prompt_text,
-                        &crate::ai::ollama::OllamaConfig {
-                            url: ai.ollama_url,
-                            model: ai.ollama_model,
-                        }).await?
+                s if s.starts_with("endpoint:") => {
+                    let id = &s["endpoint:".len()..];
+                    let endpoint = ai.endpoints.iter()
+                        .find(|e| e.id == id)
+                        .ok_or_else(|| anyhow::anyhow!("Unknown endpoint '{id}'"))?;
+                    let api_key = crate::credentials::get_api_key(provider.as_str()).unwrap_or_default();
+                    crate::ai::openai_compat::analyze(
+                        &image_b64, &prompt_text,
+                        &endpoint.base_url, &endpoint.model, &api_key,
+                    ).await?
                 }
                 other => anyhow::bail!("Unknown provider '{other}'"),
             };

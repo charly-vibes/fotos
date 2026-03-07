@@ -130,9 +130,8 @@ pub fn list() -> ListToolsResult {
                         },
                         "provider": {
                             "type": "string",
-                            "enum": ["claude", "openai", "gemini", "ollama"],
                             "default": "claude",
-                            "description": "The LLM provider to use"
+                            "description": "The LLM provider to use: 'claude', 'gemini', or 'endpoint:{id}' for a configured custom endpoint"
                         }
                     }
                 })),

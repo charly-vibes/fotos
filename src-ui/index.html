@@ -304,12 +304,8 @@
           <div class="settings-row">
             <label class="settings-label" for="pref-ai-defaultProvider">Default LLM provider</label>
             <div class="settings-control">
-              <select id="pref-ai-defaultProvider">
-                <option value="claude">Claude (Anthropic)</option>
-                <option value="openai">GPT-4o (OpenAI)</option>
-                <option value="gemini">Gemini (Google)</option>
-                <option value="ollama">Ollama (local)</option>
-              </select>
+              <!-- Options populated dynamically by settings.js -->
+              <select id="pref-ai-defaultProvider"></select>
             </div>
           </div>
           <div class="settings-row">
@@ -319,28 +315,19 @@
             </div>
           </div>
           <div class="settings-row">
-            <label class="settings-label" for="pref-ai-openaiModel">OpenAI model</label>
-            <div class="settings-control">
-              <input type="text" id="pref-ai-openaiModel" placeholder="gpt-4o">
-            </div>
-          </div>
-          <div class="settings-row">
             <label class="settings-label" for="pref-ai-geminiModel">Gemini model</label>
             <div class="settings-control">
               <input type="text" id="pref-ai-geminiModel" placeholder="gemini-2.0-flash">
             </div>
           </div>
-          <div class="settings-row">
-            <label class="settings-label" for="pref-ai-ollamaUrl">Ollama URL</label>
+          <div class="settings-row settings-row--section-header">
+            <span class="settings-label">Custom endpoints</span>
             <div class="settings-control">
-              <input type="url" id="pref-ai-ollamaUrl" placeholder="http://localhost:11434">
+              <button id="btn-add-endpoint">Add endpoint</button>
             </div>
           </div>
-          <div class="settings-row">
-            <label class="settings-label" for="pref-ai-ollamaModel">Ollama model</label>
-            <div class="settings-control">
-              <input type="text" id="pref-ai-ollamaModel" placeholder="llava:7b">
-            </div>
+          <div id="endpoint-list">
+            <!-- Endpoint rows rendered dynamically by settings.js -->
           </div>
         </div>
 
@@ -388,24 +375,6 @@
             <div class="api-key-controls">
               <div class="api-key-input-wrap">
                 <input type="password" class="api-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-                <button class="btn-show-hide">Show</button>
-              </div>
-              <div class="api-key-actions">
-                <button class="btn-save-key">Save</button>
-                <button class="btn-test-key">Test</button>
-                <button class="btn-delete-key">Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="api-key-row" data-provider="openai">
-            <div class="api-key-label">
-              <span class="provider-name">OpenAI (GPT-4o)</span>
-              <span class="key-status key-status--missing">No key set</span>
-            </div>
-            <div class="api-key-controls">
-              <div class="api-key-input-wrap">
-                <input type="password" class="api-key-input" placeholder="sk-..." autocomplete="off" spellcheck="false">
                 <button class="btn-show-hide">Show</button>
               </div>
               <div class="api-key-actions">

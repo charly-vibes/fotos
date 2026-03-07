@@ -1,7 +1,9 @@
 /// Cloud LLM vision analysis.
 ///
-/// Supports Claude (Anthropic), GPT-4o (OpenAI), and Gemini (Google)
-/// for image understanding and analysis.
+/// Supports Claude (Anthropic) and Gemini (Google) — providers whose wire
+/// formats differ from the OpenAI-compatible standard. OpenAI-compatible
+/// endpoints (OpenAI, Ollama, llama-server, etc.) are handled by
+/// `openai_compat::analyze`.
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
@@ -11,7 +13,6 @@ const TIMEOUT_SECS: u64 = 30;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LlmProvider {
     Claude { model: String },
-    OpenAI { model: String },
     Gemini { model: String },
 }
 
@@ -22,7 +23,7 @@ pub struct LlmOutput {
     pub latency_ms: u64,
 }
 
-/// Analyze an image with a cloud LLM provider.
+/// Analyze an image with a named LLM provider (Claude or Gemini).
 ///
 /// `image_b64` must be a base64-encoded JPEG (from `compress::compress_for_llm`).
 pub async fn analyze(
@@ -38,9 +39,6 @@ pub async fn analyze(
     match provider {
         LlmProvider::Claude { model } => {
             analyze_claude(&client, image_b64, prompt, model, api_key).await
-        }
-        LlmProvider::OpenAI { model } => {
-            analyze_openai(&client, image_b64, prompt, model, api_key).await
         }
         LlmProvider::Gemini { model } => {
             analyze_gemini(&client, image_b64, prompt, model, api_key).await
@@ -104,66 +102,6 @@ async fn analyze_claude(
 
     let tokens_used = (json["usage"]["input_tokens"].as_u64().unwrap_or(0)
         + json["usage"]["output_tokens"].as_u64().unwrap_or(0)) as u32;
-
-    Ok(LlmOutput {
-        response,
-        model: model.to_string(),
-        tokens_used,
-        latency_ms: start.elapsed().as_millis() as u64,
-    })
-}
-
-async fn analyze_openai(
-    client: &reqwest::Client,
-    image_b64: &str,
-    prompt: &str,
-    model: &str,
-    api_key: &str,
-) -> Result<LlmOutput> {
-    let data_url = format!("data:image/jpeg;base64,{image_b64}");
-
-    let body = serde_json::json!({
-        "model": model,
-        "max_tokens": 1024,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": { "url": data_url }
-                },
-                {
-                    "type": "text",
-                    "text": prompt
-                }
-            ]
-        }]
-    });
-
-    let start = Instant::now();
-    let resp = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(api_key)
-        .json(&body)
-        .send()
-        .await?;
-
-    let status = resp.status();
-    let json: serde_json::Value = resp.json().await?;
-
-    if !status.is_success() {
-        let msg = json["error"]["message"].as_str().unwrap_or("unknown error");
-        bail!("OpenAI API error {status}: {msg}");
-    }
-
-    let response = json["choices"]
-        .as_array()
-        .and_then(|a| a.first())
-        .and_then(|c| c["message"]["content"].as_str())
-        .unwrap_or("")
-        .to_string();
-
-    let tokens_used = json["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32;
 
     Ok(LlmOutput {
         response,

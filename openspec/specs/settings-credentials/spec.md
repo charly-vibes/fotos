@@ -109,12 +109,26 @@ The `ai` section SHALL support the following keys with their types and defaults:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `ocrLanguage` | string (Tesseract language code) | `eng` | Language for OCR text extraction |
-| `defaultLlmProvider` | string enum: `claude`, `openai`, `gemini`, `ollama` | `claude` | Default LLM provider for vision analysis |
-| `ollamaUrl` | string (URL) | `http://localhost:11434` | Base URL for the Ollama API |
-| `ollamaModel` | string | `llava:7b` | Model name for Ollama vision requests |
+| `defaultLlmProvider` | string | `claude` | Default LLM provider — `"claude"`, `"gemini"`, or `"endpoint:{id}"` |
+| `endpoints` | array of `LlmEndpoint` | two default entries (see below) | User-defined OpenAI-compatible endpoints |
 | `claudeModel` | string | `claude-sonnet-4-20250514` | Model name for Anthropic Claude API requests |
-| `openaiModel` | string | `gpt-4o` | Model name for OpenAI API requests |
 | `geminiModel` | string | `gemini-2.0-flash` | Model name for Google Gemini API requests |
+
+**`LlmEndpoint` object schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | 8-char hex ID (e.g. `"openai001"`), unique within `endpoints` |
+| `name` | string | Display name (e.g. `"OpenAI"`, `"Ollama (local)"`) |
+| `baseUrl` | string (URL) | Base URL including path prefix (e.g. `"https://api.openai.com/v1"`) |
+| `model` | string | Model name for requests (e.g. `"gpt-4o"`, `"llava:7b"`) |
+
+**Default `endpoints` array (first-run):**
+
+| id | name | baseUrl | model |
+|----|------|---------|-------|
+| `openai001` | OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
+| `ollama001` | Ollama (local) | `http://localhost:11434/v1` | `llava:7b` |
 
 #### Scenario: OCR language applied
 - **WHEN** the user invokes OCR without explicitly choosing a language
@@ -124,12 +138,13 @@ The `ai` section SHALL support the following keys with their types and defaults:
 - **WHEN** the user invokes LLM vision analysis without explicitly choosing a provider
 - **THEN** the application SHALL use the provider specified by `defaultLlmProvider`
 
-#### Scenario: Ollama endpoint configuration
-- **WHEN** the user has set `ollamaUrl` and selects Ollama as the provider
-- **THEN** the application SHALL send requests to the configured URL using the configured `ollamaModel`
+#### Scenario: User-defined endpoint used for analysis
+- **WHEN** `defaultLlmProvider` is `"endpoint:{id}"` and the user invokes LLM analysis
+- **THEN** the application SHALL look up the endpoint by `id` in the `endpoints` array
+- **THEN** the application SHALL send the request to `{baseUrl}/chat/completions` using the OpenAI-compatible format
 
-#### Scenario: Cloud model override
-- **WHEN** the user changes `claudeModel`, `openaiModel`, or `geminiModel`
+#### Scenario: Named provider model override
+- **WHEN** the user changes `claudeModel` or `geminiModel`
 - **THEN** subsequent API requests to the corresponding provider SHALL use the updated model name
 
 ---
@@ -173,8 +188,10 @@ All API keys SHALL be stored in the operating system keychain using the `keyring
 | Provider | Service | Account |
 |----------|---------|---------|
 | Anthropic | `fotos` | `anthropic-api-key` |
-| OpenAI | `fotos` | `openai-api-key` |
-| Google | `fotos` | `google-api-key` |
+| Google | `fotos` | `gemini-api-key` |
+| Custom endpoint with id `{id}` | `fotos` | `endpoint-{id}` |
+
+Note: colons are unsafe in some keychain backends, so the dispatch string `"endpoint:{id}"` maps to account `"endpoint-{id}"` (hyphen-separated). If no API key is needed (local server), no keychain entry is created.
 
 #### Scenario: Store API key
 - **WHEN** the user provides an API key for a supported provider via the settings UI
@@ -214,7 +231,9 @@ API keys MUST NOT be stored in configuration files, the `tauri-plugin-store` pre
 
 ### Requirement: Settings Schema Versioning
 
-The preference store SHALL include a `_schemaVersion` integer key at the top level. The current schema version SHALL be `1`. On startup, the application SHALL compare the stored `_schemaVersion` against the expected version. If they differ, the application SHALL run a migration function that upgrades the stored data to the current schema. Unknown keys SHALL be preserved during migration. If `_schemaVersion` is absent (e.g., legacy or first-run), it SHALL be treated as version `0` and migrated.
+The preference store SHALL include a `_schemaVersion` integer key at the top level. The current schema version SHALL be `2`. On startup, the application SHALL compare the stored `_schemaVersion` against the expected version. If they differ, the application SHALL run a migration function that upgrades the stored data to the current schema. Unknown keys SHALL be preserved during migration. If `_schemaVersion` is absent (e.g., legacy or first-run), it SHALL be treated as version `0` and migrated.
+
+**v1 → v2 migration:** The `ollamaUrl`, `ollamaModel`, and `openaiModel` fields are removed from the `ai` section. An `endpoints` array is added containing migrated entries for OpenAI and Ollama. The `defaultLlmProvider` is updated: `"openai"` → `"endpoint:{openai-id}"`, `"ollama"` → `"endpoint:{ollama-id}"`. The Ollama base URL gains a `/v1` suffix if not already present. The migration is best-effort; if the keychain step fails, the schema version is still bumped to 2.
 
 #### Scenario: Schema version matches
 - **WHEN** the stored `_schemaVersion` matches the application's expected version

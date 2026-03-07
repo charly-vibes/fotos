@@ -253,7 +253,7 @@ pub async fn analyze_llm(
     provider: String,
     store: tauri::State<'_, ImageStore>,
 ) -> Result<LlmResponse, String> {
-    use crate::ai::{compress, llm, ollama};
+    use crate::ai::{compress, llm, openai_compat};
     use tauri_plugin_store::StoreExt;
 
     let uuid = Uuid::parse_str(&image_id).map_err(|e| format!("Invalid image ID: {e}"))?;
@@ -286,16 +286,6 @@ pub async fn analyze_llm(
                 .await
                 .map_err(|e| e.to_string())?
         }
-        "openai" => {
-            let api_key = crate::credentials::get_api_key("openai")
-                .map_err(|_| "No OpenAI API key configured".to_string())?;
-            let llm_provider = llm::LlmProvider::OpenAI {
-                model: ai_settings.openai_model.clone(),
-            };
-            llm::analyze(&image_b64, &prompt_text, &llm_provider, &api_key)
-                .await
-                .map_err(|e| e.to_string())?
-        }
         "gemini" => {
             let api_key = crate::credentials::get_api_key("gemini")
                 .map_err(|_| "No Gemini API key configured".to_string())?;
@@ -306,14 +296,23 @@ pub async fn analyze_llm(
                 .await
                 .map_err(|e| e.to_string())?
         }
-        "ollama" => {
-            let config = ollama::OllamaConfig {
-                url: ai_settings.ollama_url.clone(),
-                model: ai_settings.ollama_model.clone(),
-            };
-            ollama::analyze(&image_b64, &prompt_text, &config)
-                .await
-                .map_err(|e| e.to_string())?
+        s if s.starts_with("endpoint:") => {
+            let id = &s["endpoint:".len()..];
+            let endpoint = ai_settings
+                .endpoints
+                .iter()
+                .find(|e| e.id == id)
+                .ok_or_else(|| format!("Unknown endpoint '{id}'"))?;
+            let api_key = crate::credentials::get_api_key(&provider).unwrap_or_default();
+            openai_compat::analyze(
+                &image_b64,
+                &prompt_text,
+                &endpoint.base_url,
+                &endpoint.model,
+                &api_key,
+            )
+            .await
+            .map_err(|e| e.to_string())?
         }
         other => return Err(format!("Unknown provider '{other}'")),
     };

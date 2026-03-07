@@ -108,21 +108,21 @@ The system SHALL automatically create blur annotations at the coordinates of det
 
 The system SHALL support sending a screenshot image with an optional text prompt to an LLM vision model for analysis. The system SHALL return the LLM response text, the model name used, and the token count.
 
-All LLM providers MUST implement a common `LlmProvider` async trait that defines:
+The system uses a two-tier LLM provider model:
 
-- `analyze(image: &[u8], prompt: &str, model: &str) -> Result<LlmResponse>` -- send image and prompt, return analysis
-- `name() -> &str` -- provider identifier string (e.g., `"claude"`, `"openai"`)
+- **Named providers** — Claude (Anthropic) and Gemini (Google) are built-in providers with unique wire formats (custom auth headers, non-OpenAI request/response shapes).
+- **User-defined endpoints** — A configurable list of OpenAI-compatible endpoints covers all other providers (OpenAI, local llama-server, LM Studio, Groq, Together AI, Ollama v2+, etc.). Each endpoint carries a name, base URL, model, and optional API key.
 
-The system SHALL ship with four built-in provider implementations: Claude (Anthropic), OpenAI, Gemini (Google), and Ollama (local). The `analyze_llm` command SHALL select the provider by name from a registry of available implementations. This trait-based design allows adding new providers without modifying the dispatch logic.
+Provider dispatch strings:
+- `"claude"` or `"anthropic"` — Anthropic Claude API
+- `"gemini"` — Google Gemini API
+- `"endpoint:{id}"` — user-defined endpoint with the given ID
+
+The `analyze_llm` command SHALL select the provider from the dispatch string and look up user-defined endpoints by ID from the `ai.endpoints` settings array.
 
 #### Scenario: Analyze screenshot with Claude
 - **WHEN** the user invokes `analyze_llm` with provider set to `claude`
 - **THEN** the system SHALL send the image and prompt to the Anthropic API using the configured Claude model
-- **THEN** the system SHALL return an `LlmResponse` containing `response`, `model`, and `tokens_used`
-
-#### Scenario: Analyze screenshot with OpenAI
-- **WHEN** the user invokes `analyze_llm` with provider set to `openai`
-- **THEN** the system SHALL send the image and prompt to the OpenAI API using the configured OpenAI model
 - **THEN** the system SHALL return an `LlmResponse` containing `response`, `model`, and `tokens_used`
 
 #### Scenario: Analyze screenshot with Gemini
@@ -130,10 +130,17 @@ The system SHALL ship with four built-in provider implementations: Claude (Anthr
 - **THEN** the system SHALL send the image and prompt to the Google Gemini API using the configured Gemini model
 - **THEN** the system SHALL return an `LlmResponse` containing `response`, `model`, and `tokens_used`
 
-#### Scenario: Analyze screenshot with Ollama
-- **WHEN** the user invokes `analyze_llm` with provider set to `ollama`
-- **THEN** the system SHALL send the image and prompt to the Ollama API at the configured URL using the configured Ollama model
+#### Scenario: Analyze screenshot with a user-defined endpoint
+- **WHEN** the user invokes `analyze_llm` with provider set to `endpoint:{id}`
+- **THEN** the system SHALL look up the endpoint by ID in `ai.endpoints`
+- **THEN** the system SHALL send the image and prompt to `{baseUrl}/chat/completions` using the OpenAI-compatible format
+- **THEN** the system SHALL include the endpoint's API key as a Bearer token if one is configured
 - **THEN** the system SHALL return an `LlmResponse` containing `response`, `model`, and `tokens_used`
+
+#### Scenario: Analyze screenshot with Ollama (via user-defined endpoint)
+- **WHEN** the user configures an endpoint with base URL `http://localhost:11434/v1` and invokes `analyze_llm` with its provider string
+- **THEN** the system SHALL send the image and prompt to `http://localhost:11434/v1/chat/completions`
+- **THEN** the system SHALL return an `LlmResponse` (Ollama v2+ supports the OpenAI-compatible format)
 
 #### Scenario: Default prompt when none provided
 - **WHEN** the user invokes `analyze_llm` without specifying a prompt

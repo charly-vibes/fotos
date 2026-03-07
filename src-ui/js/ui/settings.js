@@ -6,12 +6,17 @@ import {
   tessdataAvailable, downloadTessdata,
 } from '../tauri-bridge.js';
 
-const SETTINGS_VERSION = 1;
+const SETTINGS_VERSION = 2;
 
-const PROVIDERS = [
+// Static named providers (Claude and Gemini have unique wire formats).
+const NAMED_PROVIDERS = [
   { id: 'anthropic', name: 'Anthropic (Claude)', placeholder: 'sk-ant-...' },
-  { id: 'openai',    name: 'OpenAI (GPT-4o)',    placeholder: 'sk-...' },
   { id: 'gemini',    name: 'Google (Gemini)',     placeholder: 'AIza...' },
+];
+
+const DEFAULT_ENDPOINTS = [
+  { id: 'openai',       name: 'OpenAI',        baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
+  { id: 'ollama-local', name: 'Ollama (local)', baseUrl: 'http://localhost:11434/v1', model: 'llava:7b' },
 ];
 
 const DEFAULTS = {
@@ -36,10 +41,8 @@ const DEFAULTS = {
   ai: {
     ocrLanguage: 'eng',
     defaultLlmProvider: 'claude',
-    ollamaUrl: 'http://localhost:11434',
-    ollamaModel: 'llava:7b',
+    endpoints: DEFAULT_ENDPOINTS,
     claudeModel: 'claude-sonnet-4-20250514',
-    openaiModel: 'gpt-4o',
     geminiModel: 'gemini-2.0-flash',
   },
   ui: {
@@ -51,6 +54,8 @@ const DEFAULTS = {
 };
 
 let saveTimer = null;
+// In-memory endpoint list (source of truth while modal is open).
+let _endpoints = [];
 
 function getModal() {
   return document.getElementById('settings-modal');
@@ -108,18 +113,23 @@ async function loadSettings() {
 }
 
 // Deep-merge settings with DEFAULTS so any missing keys are filled in.
-// This handles upgrades where a new setting is added to a later version.
 function mergeWithDefaults(settings) {
+  const ai = { ...DEFAULTS.ai, ...(settings.ai ?? {}) };
+  // Ensure endpoints is always an array.
+  if (!Array.isArray(ai.endpoints) || ai.endpoints.length === 0) {
+    ai.endpoints = DEFAULT_ENDPOINTS;
+  }
   return {
     capture: { ...DEFAULTS.capture, ...(settings.capture ?? {}) },
     annotation: { ...DEFAULTS.annotation, ...(settings.annotation ?? {}) },
-    ai: { ...DEFAULTS.ai, ...(settings.ai ?? {}) },
+    ai,
     ui: { ...DEFAULTS.ui, ...(settings.ui ?? {}) },
   };
 }
 
 function applyToForm(rawSettings) {
   const { capture, annotation, ai, ui } = mergeWithDefaults(rawSettings);
+
   // Capture
   setVal('pref-capture-defaultMode', capture.defaultMode);
   setVal('pref-capture-defaultFormat', capture.defaultFormat);
@@ -139,14 +149,15 @@ function applyToForm(rawSettings) {
   setVal('pref-annotation-stepSize', annotation.stepNumberSize);
   setVal('pref-annotation-blurRadius', annotation.blurRadius);
 
-  // AI
+  // AI — static fields
   setVal('pref-ai-ocrLanguage', ai.ocrLanguage);
-  setVal('pref-ai-defaultProvider', ai.defaultLlmProvider);
   setVal('pref-ai-claudeModel', ai.claudeModel);
-  setVal('pref-ai-openaiModel', ai.openaiModel);
   setVal('pref-ai-geminiModel', ai.geminiModel);
-  setVal('pref-ai-ollamaUrl', ai.ollamaUrl);
-  setVal('pref-ai-ollamaModel', ai.ollamaModel);
+
+  // AI — dynamic endpoint list
+  _endpoints = ai.endpoints.map(e => ({ ...e }));
+  renderEndpointList();
+  populateProviderSelector(ai.defaultLlmProvider);
 
   // UI
   setVal('pref-ui-theme', ui.theme);
@@ -188,11 +199,9 @@ function readFromForm() {
     ai: {
       ocrLanguage: getVal('pref-ai-ocrLanguage'),
       defaultLlmProvider: getVal('pref-ai-defaultProvider'),
+      endpoints: _endpoints.map(e => ({ ...e })),
       claudeModel: getVal('pref-ai-claudeModel'),
-      openaiModel: getVal('pref-ai-openaiModel'),
       geminiModel: getVal('pref-ai-geminiModel'),
-      ollamaUrl: getVal('pref-ai-ollamaUrl'),
-      ollamaModel: getVal('pref-ai-ollamaModel'),
     },
     ui: {
       theme: getVal('pref-ui-theme'),
@@ -212,6 +221,148 @@ function scheduleSave() {
       console.error('Failed to save settings:', e);
     }
   }, 400);
+}
+
+// ─── endpoint list ────────────────────────────────────────────────────────────
+
+function generateId() {
+  // 8-char hex ID (like a UUID v4 prefix).
+  return Array.from(crypto.getRandomValues(new Uint8Array(4)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function renderEndpointList() {
+  const list = document.getElementById('endpoint-list');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const endpoint of _endpoints) {
+    list.appendChild(createEndpointRow(endpoint));
+  }
+}
+
+function createEndpointRow(endpoint) {
+  const row = document.createElement('div');
+  row.className = 'endpoint-row';
+  row.dataset.endpointId = endpoint.id;
+
+  row.innerHTML = `
+    <div class="endpoint-fields">
+      <input type="text"  class="endpoint-name"  placeholder="Name"                        value="${esc(endpoint.name)}">
+      <input type="url"   class="endpoint-url"   placeholder="https://api.openai.com/v1"   value="${esc(endpoint.baseUrl)}">
+      <input type="text"  class="endpoint-model" placeholder="gpt-4o"                      value="${esc(endpoint.model)}">
+    </div>
+    <div class="endpoint-actions">
+      <button class="btn-endpoint-key">Set Key</button>
+      <button class="btn-endpoint-del-key">Delete Key</button>
+      <button class="btn-endpoint-remove" title="Remove endpoint">×</button>
+    </div>
+    <div class="endpoint-key-area hidden">
+      <input type="password" class="endpoint-key-input" placeholder="API key (leave empty for local servers)" autocomplete="off" spellcheck="false">
+      <button class="btn-endpoint-key-save">Save</button>
+      <button class="btn-endpoint-key-cancel">Cancel</button>
+    </div>
+  `;
+
+  // Sync field changes back to _endpoints and schedule save.
+  row.querySelector('.endpoint-name').addEventListener('input', e => {
+    updateEndpoint(endpoint.id, { name: e.target.value });
+    populateProviderSelector(getVal('pref-ai-defaultProvider'));
+    scheduleSave();
+  });
+  row.querySelector('.endpoint-url').addEventListener('input', e => {
+    updateEndpoint(endpoint.id, { baseUrl: e.target.value });
+    scheduleSave();
+  });
+  row.querySelector('.endpoint-model').addEventListener('input', e => {
+    updateEndpoint(endpoint.id, { model: e.target.value });
+    scheduleSave();
+  });
+
+  const keyArea = row.querySelector('.endpoint-key-area');
+  const keyInput = row.querySelector('.endpoint-key-input');
+
+  row.querySelector('.btn-endpoint-key').addEventListener('click', () => {
+    keyArea.classList.toggle('hidden');
+    if (!keyArea.classList.contains('hidden')) keyInput.focus();
+  });
+
+  row.querySelector('.btn-endpoint-key-cancel').addEventListener('click', () => {
+    keyArea.classList.add('hidden');
+    keyInput.value = '';
+  });
+
+  row.querySelector('.btn-endpoint-key-save').addEventListener('click', async () => {
+    const key = keyInput.value.trim();
+    if (!key) return;
+    try {
+      await setApiKey(`endpoint:${endpoint.id}`, key);
+      keyArea.classList.add('hidden');
+      keyInput.value = '';
+    } catch (e) {
+      console.error('Failed to save key:', e);
+    }
+  });
+
+  row.querySelector('.btn-endpoint-del-key').addEventListener('click', async () => {
+    try {
+      await deleteApiKey(`endpoint:${endpoint.id}`);
+    } catch (e) {
+      console.error('Failed to delete key:', e);
+    }
+  });
+
+  row.querySelector('.btn-endpoint-remove').addEventListener('click', () => {
+    _endpoints = _endpoints.filter(e => e.id !== endpoint.id);
+    // If the removed endpoint was the selected provider, fall back to claude.
+    const sel = document.getElementById('pref-ai-defaultProvider');
+    if (sel && sel.value === `endpoint:${endpoint.id}`) {
+      populateProviderSelector('claude');
+    } else {
+      populateProviderSelector(sel?.value ?? 'claude');
+    }
+    row.remove();
+    scheduleSave();
+  });
+
+  return row;
+}
+
+function updateEndpoint(id, patch) {
+  const ep = _endpoints.find(e => e.id === id);
+  if (ep) Object.assign(ep, patch);
+}
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+// ─── provider selector ────────────────────────────────────────────────────────
+
+function populateProviderSelector(selectedValue) {
+  const sel = document.getElementById('pref-ai-defaultProvider');
+  if (!sel) return;
+  sel.innerHTML = '';
+
+  const add = (value, label) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    if (value === selectedValue) opt.selected = true;
+    sel.appendChild(opt);
+  };
+
+  add('claude', 'Claude (Anthropic)');
+  add('gemini', 'Gemini (Google)');
+
+  for (const ep of _endpoints) {
+    add(`endpoint:${ep.id}`, ep.name || ep.id);
+  }
+
+  // If selectedValue wasn't matched (e.g. deleted endpoint), default to claude.
+  if (!sel.value || sel.value !== selectedValue) {
+    sel.value = 'claude';
+  }
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -241,10 +392,10 @@ function updateRangeDisplay(id, value) {
   if (el) el.textContent = value;
 }
 
-// ─── API key management ───────────────────────────────────────────────────────
+// ─── API key management (static providers) ────────────────────────────────────
 
 async function refreshKeyStatuses() {
-  for (const { id } of PROVIDERS) {
+  for (const { id } of NAMED_PROVIDERS) {
     const row = getModal().querySelector(`[data-provider="${id}"]`);
     if (!row) continue;
     setRowStatus(row, 'loading', 'Checking...');
@@ -327,7 +478,7 @@ export function initSettings() {
     applyTheme(e.target.value);
   });
 
-  // Auto-save on any preference change
+  // Auto-save on any static preference change
   modal.querySelectorAll(
     '.settings-tab-panel select, ' +
     '.settings-tab-panel input[type="text"], ' +
@@ -339,9 +490,25 @@ export function initSettings() {
     el.addEventListener('change', scheduleSave);
   });
 
+  // Add endpoint button
+  document.getElementById('btn-add-endpoint')?.addEventListener('click', () => {
+    const endpoint = {
+      id: generateId(),
+      name: '',
+      baseUrl: '',
+      model: '',
+    };
+    _endpoints.push(endpoint);
+    const list = document.getElementById('endpoint-list');
+    list?.appendChild(createEndpointRow(endpoint));
+    populateProviderSelector(getVal('pref-ai-defaultProvider'));
+    scheduleSave();
+  });
+
   // Reset to Defaults
   modal.querySelector('.btn-reset-defaults').addEventListener('click', async () => {
     if (!confirm('Reset all preferences to their default values? API keys will not be affected.')) return;
+    _endpoints = DEFAULT_ENDPOINTS.map(e => ({ ...e }));
     applyToForm(DEFAULTS);
     try {
       await setSettings(DEFAULTS);
@@ -384,7 +551,7 @@ export function initSettings() {
     });
   }
 
-  // API key rows
+  // API key rows (static named providers: Anthropic, Gemini)
   for (const row of modal.querySelectorAll('.api-key-row')) {
     const provider = row.dataset.provider;
     const input = row.querySelector('.api-key-input');
