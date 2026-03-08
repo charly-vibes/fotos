@@ -45,6 +45,9 @@ jobs:
       - name: Add redirect index
         run: echo '<meta http-equiv="refresh" content="0; url=fotos_lib/index.html">' > target/doc/index.html
 
+      - name: Copy llms.txt
+        run: cp llms.txt target/doc/llms.txt
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
