@@ -1,0 +1,23 @@
+# lefthook.yml - pre-commit/pre-push hooks
+#
+# Install: lefthook install
+# Bypass (WIP only): git push --no-verify
+
+pre-commit:
+  parallel: true
+  commands:
+    fmt-check:
+      glob: "*.rs"
+      run: cargo fmt --all -- --check
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --workspace -- -D warnings
+
+pre-push:
+  commands:
+    test:
+      run: cargo test --workspace
+      fail_text: |
+        Tests failed. Push blocked.
+
+        To bypass (WIP only): git push --no-verify

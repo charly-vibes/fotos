@@ -129,6 +129,10 @@ spec-list:
 
 # ── Setup ─────────────────────────────────────────────
 
+# One-time project setup: install git hooks
+setup:
+    lefthook install
+
 # Install Tauri build dependencies in the fedora distrobox
 setup-distrobox:
     #!/usr/bin/env bash
