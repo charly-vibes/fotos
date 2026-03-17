@@ -130,9 +130,8 @@ pub async fn download_tessdata(app: tauri::AppHandle, lang: String) -> Result<()
         return Ok(());
     }
 
-    let url = format!(
-        "https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/{lang}.traineddata"
-    );
+    let url =
+        format!("https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/{lang}.traineddata");
 
     let client = reqwest::Client::new();
     let response = client
@@ -150,7 +149,11 @@ pub async fn download_tessdata(app: tauri::AppHandle, lang: String) -> Result<()
     // Emit an initial progress event so the UI can show "Downloading…".
     let _ = app.emit(
         "tessdata:progress",
-        TessdataProgressPayload { lang: lang.clone(), downloaded: 0, total },
+        TessdataProgressPayload {
+            lang: lang.clone(),
+            downloaded: 0,
+            total,
+        },
     );
 
     let bytes = response
@@ -163,7 +166,11 @@ pub async fn download_tessdata(app: tauri::AppHandle, lang: String) -> Result<()
 
     let _ = app.emit(
         "tessdata:progress",
-        TessdataProgressPayload { lang: lang.clone(), downloaded, total: downloaded },
+        TessdataProgressPayload {
+            lang: lang.clone(),
+            downloaded,
+            total: downloaded,
+        },
     );
 
     Ok(())
@@ -183,7 +190,10 @@ pub fn run_ocr(
 
     let lang = lang.unwrap_or_else(|| "eng".to_string());
     let tessdata_path = resolve_tessdata_path(&app, &lang)?;
-    let opts = OcrOptions { lang, tessdata_path };
+    let opts = OcrOptions {
+        lang,
+        tessdata_path,
+    };
 
     let progress_app = app.clone();
     let on_progress = move |current: u32, total: u32| {
@@ -223,10 +233,13 @@ pub fn auto_blur_pii(
         .ok_or_else(|| format!("Image not found: {image_id}"))?;
 
     let tessdata_path = resolve_tessdata_path(&app, "eng")?;
-    let opts = OcrOptions { lang: "eng".to_string(), tessdata_path };
+    let opts = OcrOptions {
+        lang: "eng".to_string(),
+        tessdata_path,
+    };
 
-    let ocr_output = crate::ai::ocr::run_ocr(&image, &opts, None)
-        .map_err(|e| format!("OCR failed: {e}"))?;
+    let ocr_output =
+        crate::ai::ocr::run_ocr(&image, &opts, None).map_err(|e| format!("OCR failed: {e}"))?;
 
     let pii_matches = crate::ai::pii::detect_pii(&ocr_output.regions)
         .map_err(|e| format!("PII detection failed: {e}"))?;

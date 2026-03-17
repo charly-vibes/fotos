@@ -163,13 +163,16 @@ pub fn run() {
             // Restore saved window position and size.
             {
                 use tauri_plugin_store::StoreExt;
-                if let (Ok(store), Some(win)) = (app.store("prefs.json"), app.get_webview_window("main")) {
+                if let (Ok(store), Some(win)) =
+                    (app.store("prefs.json"), app.get_webview_window("main"))
+                {
                     if let Some(pos) = store.get("window_pos") {
                         if let (Some(x), Some(y)) = (
                             pos.get("x").and_then(|v| v.as_i64()),
                             pos.get("y").and_then(|v| v.as_i64()),
                         ) {
-                            let _ = win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                            let _ =
+                                win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
                         }
                     }
                     if let Some(size) = store.get("window_size") {
@@ -251,8 +254,10 @@ pub fn run() {
                 if let Ok(store) = window.app_handle().store("prefs.json") {
                     if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
                         store.set("window_pos", serde_json::json!({"x": pos.x, "y": pos.y}));
-                        store.set("window_size",
-                            serde_json::json!({"width": size.width, "height": size.height}));
+                        store.set(
+                            "window_size",
+                            serde_json::json!({"width": size.width, "height": size.height}),
+                        );
                         let _ = store.save();
                     }
                 }

@@ -247,7 +247,10 @@ fn format_result(command: &str, value: Value) -> Vec<Content> {
             if let Some(b64) = value.get("image_b64").and_then(|v| v.as_str()) {
                 out.push(Content::image(b64.to_owned(), "image/png"));
             }
-            let detections = value.get("detections").cloned().unwrap_or(Value::Array(vec![]));
+            let detections = value
+                .get("detections")
+                .cloned()
+                .unwrap_or(Value::Array(vec![]));
             out.push(Content::text(detections.to_string()));
             out
         }

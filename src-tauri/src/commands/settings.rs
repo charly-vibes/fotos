@@ -393,8 +393,7 @@ pub async fn test_api_key(app: tauri::AppHandle, provider: String) -> Result<(),
             if key.is_empty() {
                 return Err("No API key configured for 'gemini'".to_string());
             }
-            let url =
-                format!("https://generativelanguage.googleapis.com/v1/models?key={key}");
+            let url = format!("https://generativelanguage.googleapis.com/v1/models?key={key}");
             let status = client
                 .get(&url)
                 .send()

@@ -22,9 +22,7 @@ pub fn list() -> ListResourcesResult {
             RawResource {
                 uri: "screenshots://recent".to_owned(),
                 name: "Recent Screenshots".to_owned(),
-                description: Some(
-                    "List of recent screenshot captures with metadata".to_owned(),
-                ),
+                description: Some("List of recent screenshot captures with metadata".to_owned()),
                 mime_type: Some("application/json".to_owned()),
                 size: None,
             }
@@ -61,8 +59,7 @@ pub fn list_templates() -> ListResourceTemplatesResult {
                 uri_template: "screenshots://{id}/ocr".to_owned(),
                 name: "Screenshot OCR".to_owned(),
                 description: Some(
-                    "Cached or on-demand OCR text and regions for a specific screenshot"
-                        .to_owned(),
+                    "Cached or on-demand OCR text and regions for a specific screenshot".to_owned(),
                 ),
                 mime_type: Some("application/json".to_owned()),
             }
@@ -72,10 +69,7 @@ pub fn list_templates() -> ListResourceTemplatesResult {
 }
 
 /// Read a resource by URI.
-pub async fn read(
-    bridge: Option<&AppBridge>,
-    uri: &str,
-) -> Result<ReadResourceResult, McpError> {
+pub async fn read(bridge: Option<&AppBridge>, uri: &str) -> Result<ReadResourceResult, McpError> {
     if uri == "screenshots://recent" {
         return read_recent(bridge, uri).await;
     }
@@ -191,7 +185,8 @@ async fn bridge_call(
             None,
         ));
     };
-    bridge.send_command(command, params).await.map_err(|e| {
-        McpError::internal_error(format!("IPC error calling '{command}': {e}"), None)
-    })
+    bridge
+        .send_command(command, params)
+        .await
+        .map_err(|e| McpError::internal_error(format!("IPC error calling '{command}': {e}"), None))
 }

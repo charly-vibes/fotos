@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec --version:*)",
+      "Bash(cargo --version:*)",
+      "Bash(distrobox enter:*)",
+      "Bash(openspec validate:*)",
+      "WebSearch",
+      "Bash(bd create:*)",
+      "Bash(bd update:*)",
+      "Bash(bd dep add:*)",
+      "Bash(wai status:*)",
+      "Bash(just check:*)",
+      "Bash(bd show:*)",
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(bd ready:*)",
+      "Bash(bd list:*)",
+      "WebFetch(domain:goreleaser.com)",
+      "Bash(gh run:*)",
+      "Bash(gh api:*)",
+      "Bash(openspec show:*)",
+      "Bash(bd sync:*)",
+      "Bash(for spec in openspec/specs/*/spec.md)",
+      "Bash(do echo \"=== $spec ===\")",
+      "Read(//var/home/sasha/para/areas/dev/gh/charly/fotos/**)",
+      "Bash(done)",
+      "Bash(wai search:*)"
+    ]
+  }
+}

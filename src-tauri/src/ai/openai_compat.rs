@@ -54,9 +54,10 @@ pub async fn analyze(
     }
 
     let start = Instant::now();
-    let resp = req.send().await.map_err(|e| {
-        anyhow::anyhow!("Request to {url} failed: {e}")
-    })?;
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("Request to {url} failed: {e}"))?;
 
     let status = resp.status();
     let json: serde_json::Value = resp.json().await?;

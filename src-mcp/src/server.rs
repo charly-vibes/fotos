@@ -112,12 +112,13 @@ impl ServerHandler for FotosMcpServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let bridge = self.bridge().await;
-        let result =
-            tools::call(bridge.as_ref(), &request.name, request.arguments.as_ref()).await;
+        let result = tools::call(bridge.as_ref(), &request.name, request.arguments.as_ref()).await;
         // If we got an IPC error content block, reset so next call retries.
         if let Ok(ref r) = result {
             if r.is_error == Some(true)
-                && r.content.iter().any(|c| format!("{c:?}").contains("IPC error"))
+                && r.content
+                    .iter()
+                    .any(|c| format!("{c:?}").contains("IPC error"))
             {
                 self.reset_bridge().await;
             }

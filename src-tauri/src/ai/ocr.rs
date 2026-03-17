@@ -103,8 +103,10 @@ fn run_tiled(
     let xs = tile_positions(img_w, TILE_SIZE, TILE_OVERLAP);
     let ys = tile_positions(img_h, TILE_SIZE, TILE_OVERLAP);
 
-    let coords: Vec<(u32, u32)> =
-        ys.iter().flat_map(|&ty| xs.iter().map(move |&tx| (tx, ty))).collect();
+    let coords: Vec<(u32, u32)> = ys
+        .iter()
+        .flat_map(|&ty| xs.iter().map(move |&tx| (tx, ty)))
+        .collect();
     let total = coords.len() as u32;
     let done = AtomicU32::new(0);
 
@@ -278,7 +280,11 @@ fn iou(a: &OcrRegion, b: &OcrRegion) -> f32 {
     let area_b = (b.w * b.h) as f32;
     let union = area_a + area_b - inter;
 
-    if union <= 0.0 { 0.0 } else { inter / union }
+    if union <= 0.0 {
+        0.0
+    } else {
+        inter / union
+    }
 }
 
 /// Two words are "similar" if they match case-insensitively, differ by at
@@ -372,7 +378,14 @@ mod tests {
     use super::*;
 
     fn region(text: &str, x: u32, y: u32, w: u32, h: u32, conf: f32) -> OcrRegion {
-        OcrRegion { text: text.into(), x, y, w, h, confidence: conf }
+        OcrRegion {
+            text: text.into(),
+            x,
+            y,
+            w,
+            h,
+            confidence: conf,
+        }
     }
 
     // --- tile_positions ---
@@ -521,7 +534,10 @@ mod tests {
             region("World", 70, 0, 60, 20, 90.0),
         ];
         let text = regions_to_text(&regions);
-        assert!(text.contains("Hello") && text.contains("World"), "got: {text}");
+        assert!(
+            text.contains("Hello") && text.contains("World"),
+            "got: {text}"
+        );
     }
 
     #[test]
@@ -552,13 +568,28 @@ mod tests {
             region("Text", 0, 30, 60, 20, 90.0),
         ];
         let text = regions_to_text(&regions);
-        let pos = |w: &str| text.find(w).unwrap_or_else(|| panic!("'{w}' missing in: {text}"));
+        let pos = |w: &str| {
+            text.find(w)
+                .unwrap_or_else(|| panic!("'{w}' missing in: {text}"))
+        };
         // Within the same row, left column precedes right column.
-        assert!(pos("Left") < pos("Right"), "row 0: left col should precede right col");
-        assert!(pos("Text") < pos("Side"), "row 1: left col should precede right col");
+        assert!(
+            pos("Left") < pos("Right"),
+            "row 0: left col should precede right col"
+        );
+        assert!(
+            pos("Text") < pos("Side"),
+            "row 1: left col should precede right col"
+        );
         // Row 0 precedes row 1 for each column.
-        assert!(pos("Left") < pos("Text"), "col 1: top word should precede bottom word");
-        assert!(pos("Right") < pos("Side"), "col 2: top word should precede bottom word");
+        assert!(
+            pos("Left") < pos("Text"),
+            "col 1: top word should precede bottom word"
+        );
+        assert!(
+            pos("Right") < pos("Side"),
+            "col 2: top word should precede bottom word"
+        );
     }
 
     /// Sidebar layout: a narrow navigation column (x≈0) beside main content (x≈200).
@@ -579,10 +610,19 @@ mod tests {
         }
         // Sidebar items share the same y-band as main content; left col comes first.
         let pos = |w: &str| text.find(w).unwrap();
-        assert!(pos("File") < pos("The"), "sidebar 'File' should precede main 'The'");
+        assert!(
+            pos("File") < pos("The"),
+            "sidebar 'File' should precede main 'The'"
+        );
         // Sidebar items are top-to-bottom.
-        assert!(pos("File") < pos("Edit"), "File should precede Edit in sidebar");
-        assert!(pos("Edit") < pos("View"), "Edit should precede View in sidebar");
+        assert!(
+            pos("File") < pos("Edit"),
+            "File should precede Edit in sidebar"
+        );
+        assert!(
+            pos("Edit") < pos("View"),
+            "Edit should precede View in sidebar"
+        );
     }
 
     /// Unsorted input (worst-case Tesseract scramble): regions arrive in reverse
@@ -598,7 +638,10 @@ mod tests {
         // Shuffle to worst case.
         regions.reverse();
         let text = regions_to_text(&regions);
-        let pos = |w: &str| text.find(w).unwrap_or_else(|| panic!("'{w}' missing in: {text}"));
+        let pos = |w: &str| {
+            text.find(w)
+                .unwrap_or_else(|| panic!("'{w}' missing in: {text}"))
+        };
         assert!(pos("First") < pos("Second"), "First should precede Second");
         assert!(pos("Second") < pos("Third"), "Second should precede Third");
     }
