@@ -38,14 +38,14 @@ just install         # build and install locally
 ### Homebrew (macOS and Linux)
 
 ```bash
-brew tap charly-vibes/fotos
+brew tap charly-vibes/charly
 brew install fotos
 ```
 
 ### Scoop (Windows)
 
 ```powershell
-scoop bucket add charly-vibes https://github.com/charly-vibes/scoop-bucket
+scoop bucket add charly https://github.com/charly-vibes/scoop-charly
 scoop install fotos
 ```
 

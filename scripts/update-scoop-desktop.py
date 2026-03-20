@@ -18,9 +18,10 @@ manifest = {
     "license": "MIT",
     "url": url,
     "hash": f"sha256:{msi_sha}",
-    "installer": {
-        "file": f"fotos_{version}_x64_en-US.msi"
-    },
+    "bin": "fotos.exe",
+    "shortcuts": [
+        ["fotos.exe", "Fotos"]
+    ],
     "checkver": {
         "github": "https://github.com/charly-vibes/fotos"
     },
