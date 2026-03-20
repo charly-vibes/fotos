@@ -229,6 +229,41 @@ gnome-install: gnome-schema
 gnome-pack: gnome-schema
     cd gnome-extension && zip -r ../fotos-gnome-extension.zip .
 
+# ── Flathub ───────────────────────────────────────────
+
+# Generate a Flathub-ready manifest (remote git source pinned to a tag)
+flathub-prep tag="v0.3.0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TAG="{{tag}}"
+    COMMIT=$(git rev-parse "$TAG^{commit}" 2>/dev/null || { echo "Tag $TAG not found. Create it first: git tag $TAG"; exit 1; })
+    REPO_URL="https://github.com/charly-vibes/fotos.git"
+    OUT="flatpak/flathub-ready"
+    mkdir -p "$OUT"
+    # Patch manifest: swap local git source for remote pinned source
+    python3 -c "
+    import sys
+    text = open(sys.argv[1]).read()
+    # Remove local/flathub comments
+    lines = []
+    for line in text.splitlines():
+        if '# For local builds' in line or '# For Flathub' in line:
+            continue
+        lines.append(line)
+    text = '\n'.join(lines) + '\n'
+    # Swap git source from local path to remote URL
+    text = text.replace('path: ..', 'url: $REPO_URL')
+    text = text.replace('branch: main', 'tag: $TAG\n        commit: $COMMIT')
+    open(sys.argv[2], 'w').write(text)
+    " flatpak/io.github.charly_vibes.fotos.yml "$OUT/io.github.charly_vibes.fotos.yml"
+    cp flatpak/cargo-sources.json "$OUT/"
+    cp flatpak/flathub.json "$OUT/"
+    echo "Flathub-ready manifest written to $OUT/"
+    echo "  tag:    $TAG"
+    echo "  commit: $COMMIT"
+    echo ""
+    echo "Submit contents of $OUT/ to: github.com/flathub/flathub"
+
 # ── Utilities ─────────────────────────────────────────
 
 # Remove build artifacts

@@ -125,6 +125,8 @@ modules:
         TESSERACT_INCLUDE_PATH: /app/include
         TESSERACT_LIB_PATH: /app/lib
     sources:
+      # For local builds: path: .. (reads committed git state)
+      # For Flathub: run `just flathub-prep` to generate a manifest with remote URL
       - type: git
         path: ..
         branch: main

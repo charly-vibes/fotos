@@ -21,6 +21,7 @@ src-tauri/fotos-mcp-*
 # Flatpak build artifacts
 .flatpak-build/
 .flatpak-repo/
+flatpak/flathub-ready/
 
 # Tesseract data (downloaded at build time)
 src-tauri/resources/tessdata/*.traineddata
