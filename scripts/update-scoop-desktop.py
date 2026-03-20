@@ -7,9 +7,9 @@ import sys
 manifest_path = sys.argv[1]
 version = sys.argv[2]
 tag = sys.argv[3]
-msi_sha = sys.argv[4]
+zip_sha = sys.argv[4]
 
-url = f"https://github.com/charly-vibes/fotos/releases/download/{tag}/fotos_{version}_x64_en-US.msi"
+url = f"https://github.com/charly-vibes/fotos/releases/download/{tag}/fotos_{version}_x64_portable.zip"
 
 manifest = {
     "version": version,
@@ -17,7 +17,7 @@ manifest = {
     "homepage": "https://github.com/charly-vibes/fotos",
     "license": "MIT",
     "url": url,
-    "hash": f"sha256:{msi_sha}",
+    "hash": f"sha256:{zip_sha}",
     "bin": "fotos.exe",
     "shortcuts": [
         ["fotos.exe", "Fotos"]
@@ -26,7 +26,7 @@ manifest = {
         "github": "https://github.com/charly-vibes/fotos"
     },
     "autoupdate": {
-        "url": "https://github.com/charly-vibes/fotos/releases/download/v$version/fotos_$version_x64_en-US.msi"
+        "url": "https://github.com/charly-vibes/fotos/releases/download/v$version/fotos_$version_x64_portable.zip"
     }
 }
 
@@ -37,4 +37,4 @@ with open(manifest_path, "w") as f:
 
 print(f"Wrote {manifest_path} (version {version})")
 print(f"  url: {url}")
-print(f"  sha256: {msi_sha[:16]}...")
+print(f"  sha256: {zip_sha[:16]}...")

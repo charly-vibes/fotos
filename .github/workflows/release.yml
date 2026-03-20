@@ -214,6 +214,19 @@ jobs:
           name: windows-nsis
           path: target/release/bundle/nsis/*.exe
 
+      - name: Stage portable files for Scoop
+        shell: bash
+        run: |
+          mkdir -p portable/resources
+          cp "target/release/Fotos.exe" portable/fotos.exe
+          cp -r src-tauri/resources/tessdata portable/resources/tessdata
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: portable/
+          retention-days: 1
+
 # ── publish: create GitHub release, update tap/bucket ─────────────────────────
 
   publish:
@@ -253,6 +266,7 @@ jobs:
           tar -czf "dist/fotos-mcp_${VERSION}_darwin_amd64.tar.gz" -C bins/darwin_amd64 fotos-mcp
           tar -czf "dist/fotos-mcp_${VERSION}_darwin_arm64.tar.gz" -C bins/darwin_arm64 fotos-mcp
           (cd bins/windows_amd64 && zip "$(pwd)/../../dist/fotos-mcp_${VERSION}_windows_amd64.zip" fotos-mcp.exe)
+          (cd artifacts/windows-portable && zip -r "../../dist/fotos_${VERSION}_x64_portable.zip" .)
           cd dist && sha256sum *.tar.gz *.zip > checksums.txt
 
       - name: Create GitHub release
@@ -270,6 +284,7 @@ jobs:
             dist/fotos-mcp_${VERSION}_darwin_amd64.tar.gz \
             dist/fotos-mcp_${VERSION}_darwin_arm64.tar.gz \
             dist/fotos-mcp_${VERSION}_windows_amd64.zip \
+            dist/fotos_${VERSION}_x64_portable.zip \
             dist/checksums.txt \
             artifacts/linux-deb/*.deb \
             artifacts/linux-appimage/*.AppImage \
@@ -337,12 +352,11 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           VERSION="${{ steps.pkg.outputs.version }}"
-          MSI=$(ls artifacts/windows-msi/*.msi | head -1)
-          MSI_SHA=$(sha256sum "$MSI" | awk '{print $1}')
+          ZIP_SHA=$(sha256sum "dist/fotos_${VERSION}_x64_portable.zip" | awk '{print $1}')
           git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/scoop-charly.git" /tmp/scoop-desktop
           python3 scripts/update-scoop-desktop.py \
             /tmp/scoop-desktop/bucket/fotos.json \
-            "${VERSION}" "${TAG}" "${MSI_SHA}"
+            "${VERSION}" "${TAG}" "${ZIP_SHA}"
           cd /tmp/scoop-desktop
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
