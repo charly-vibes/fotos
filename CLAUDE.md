@@ -64,7 +64,7 @@ Before saying "done", run this checklist:
 ```
 [ ] wai handoff create <project>   # capture context for next session
 [ ] bd close <id>                  # mark completed issues
-[ ] bd sync --from-main            # pull beads updates
+[ ] bd backup                      # backup beads state
 [ ] wai reflect                    # update CLAUDE.md with project patterns (every ~5 sessions)
 [ ] git add <files> && git commit  # commit code + handoff
 ```
@@ -197,7 +197,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 **When ending a work session**, complete ALL steps below.
 
-**Note:** This project uses ephemeral branches — code is merged to `main` locally, not pushed to a remote. The beads issue tracker lives in the repo and is synced via `bd sync --from-main`.
+**Note:** The beads issue tracker lives in the repo. Run `bd backup` before committing to capture beads state.
 
 **MANDATORY WORKFLOW:**
 
@@ -208,13 +208,13 @@ Keep this managed block so 'openspec update' can refresh the instructions.
    ```bash
    git status                  # review what changed
    git add <files>             # stage code changes
-   bd sync --from-main         # pull beads updates from main
-   git commit -m "..."         # commit code + beads state together
+   bd backup                    # backup beads state
+   git commit -m "..."         # commit code changes
    ```
-5. **Create a handoff** — `wai handoff create tracer-bullet` so the next session has context
+5. **Create a handoff** — `wai handoff create fotos` so the next session has context
 6. **Verify** — `git status` shows a clean working tree
 
 **CRITICAL RULES:**
 - NEVER say "done" before committing your changes
-- Do NOT use `git push` — this repo has no upstream remote; merges happen locally
-- Run `bd sync --from-main` before committing to avoid beads conflicts
+- Always `git push` after committing
+- Run `bd backup` before committing to capture beads state
