@@ -3,8 +3,9 @@
 # Install: lefthook install
 # Bypass (WIP only): git commit/push --no-verify
 #
-# NOTE: clippy and tests need system libs (leptonica, pipewire) that live
-# inside the fedora distrobox on Bluefin hosts. fmt-check works on the host.
+# Clippy and tests need system libs (leptonica, pipewire) that live inside the
+# fedora distrobox on Bluefin hosts. We auto-detect and run through distrobox
+# when available; fmt-check always works on the host.
 
 pre-commit:
   commands:
@@ -17,9 +18,28 @@ pre-push:
   commands:
     clippy:
       glob: "*.rs"
-      run: cargo clippy --workspace -- -D warnings
+      run: |
+        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q fedora; then
+          RUN="distrobox enter fedora --"
+        else
+          RUN=""
+        fi
+        triple=$($RUN rustc -vV | grep '^host:' | cut -d' ' -f2)
+        touch "src-tauri/fotos-mcp-${triple}"
+        $RUN cargo clippy --workspace -- -D warnings
+        ret=$?
+        rm -f src-tauri/fotos-mcp-*-unknown-*
+        exit $ret
     test:
-      run: cargo test --workspace
-      fail_text: |
-        Tests failed. Push blocked.
-        If system libs are missing, run inside distrobox or use: git push --no-verify
+      run: |
+        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q fedora; then
+          RUN="distrobox enter fedora --"
+        else
+          RUN=""
+        fi
+        triple=$($RUN rustc -vV | grep '^host:' | cut -d' ' -f2)
+        touch "src-tauri/fotos-mcp-${triple}"
+        $RUN cargo test --workspace
+        ret=$?
+        rm -f src-tauri/fotos-mcp-*-unknown-*
+        exit $ret
