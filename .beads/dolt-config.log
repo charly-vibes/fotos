@@ -1,3 +1,4 @@
 2026-03-06T16:06:32Z actor=unknown key=host value=127.0.0.1 beads_dir=/var/home/sasha/para/areas/dev/gh/charly/fotos/.beads
 2026-03-06T16:06:32Z actor=unknown key=port value=3307 beads_dir=/var/home/sasha/para/areas/dev/gh/charly/fotos/.beads
 2026-03-06T16:13:51Z actor=unknown key=data-dir value=/var/home/sasha/.local/share/beads/dolt/fotos beads_dir=/var/home/sasha/para/areas/dev/gh/charly/fotos/.beads
+2026-04-02T21:11:14Z actor=unknown key=port value=35202 beads_dir=/var/home/sasha/para/areas/dev/gh/charly/fotos/.beads
