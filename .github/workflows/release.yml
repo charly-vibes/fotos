@@ -227,11 +227,37 @@ jobs:
           path: portable/
           retention-days: 1
 
+  build-macos:
+    name: Build fotos (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: brew install tesseract leptonica
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --locked
+
+      - name: Build package
+        run: |
+          triple=$(rustc -vV | grep '^host:' | cut -d' ' -f2)
+          touch "src-tauri/fotos-mcp-${triple}"
+          cargo tauri build --bundles dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: target/release/bundle/dmg/*.dmg
+
 # ── publish: create GitHub release, update tap/bucket ─────────────────────────
 
   publish:
     name: Publish Release
-    needs: [mcp-linux, mcp-darwin, mcp-windows, build-linux, build-windows]
+    needs: [mcp-linux, mcp-darwin, mcp-windows, build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -247,6 +273,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: "linux-*"
+          path: artifacts/
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "macos-*"
           path: artifacts/
 
       - uses: actions/download-artifact@v4
@@ -288,6 +319,7 @@ jobs:
             dist/checksums.txt \
             artifacts/linux-deb/*.deb \
             artifacts/linux-appimage/*.AppImage \
+            artifacts/macos-dmg/*.dmg \
             artifacts/windows-msi/*.msi \
             artifacts/windows-nsis/*.exe
         env:
@@ -335,10 +367,13 @@ jobs:
           VERSION="${{ steps.pkg.outputs.version }}"
           APPIMAGE=$(ls artifacts/linux-appimage/*.AppImage | head -1)
           APPIMAGE_SHA=$(sha256sum "$APPIMAGE" | awk '{print $1}')
+          DMG=$(ls artifacts/macos-dmg/*.dmg 2>/dev/null | head -1)
+          DMG_SHA=""
+          if [ -n "$DMG" ]; then DMG_SHA=$(sha256sum "$DMG" | awk '{print $1}'); fi
           git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/charly-vibes/homebrew-charly.git" /tmp/tap-cask
           python3 scripts/update-homebrew-cask.py \
             /tmp/tap-cask/Casks/fotos.rb \
-            "${VERSION}" "${TAG}" "${APPIMAGE_SHA}"
+            "${VERSION}" "${TAG}" "${APPIMAGE_SHA}" ${DMG_SHA:+"$DMG_SHA"}
           cd /tmp/tap-cask
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"

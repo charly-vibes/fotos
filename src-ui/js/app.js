@@ -316,6 +316,7 @@ async function init() {
     if (tool !== 'crop') {
       isCropDragging = false;
       cropStartImg = null;
+      cropPendingRect = null;
       engine.renderCropOverlay(null);
     }
     // Clear selection handles when leaving select tool.
@@ -794,10 +795,11 @@ async function init() {
       return;
     }
 
-    // Enter — confirm crop
-    if (e.key === 'Enter' && isCropDragging && cropStartImg && cropEndImg) {
+    // Enter — confirm crop (pending rect or active drag)
+    if (e.key === 'Enter' && (cropPendingRect || (isCropDragging && cropStartImg && cropEndImg))) {
       e.preventDefault();
-      const r = normalizeRect(cropStartImg.x, cropStartImg.y, cropEndImg.x, cropEndImg.y);
+      const r = cropPendingRect || normalizeRect(cropStartImg.x, cropStartImg.y, cropEndImg.x, cropEndImg.y);
+      cropPendingRect = null;
       isCropDragging = false;
       cropStartImg = null;
       cropEndImg = null;
@@ -806,12 +808,13 @@ async function init() {
       return;
     }
 
-    // Escape — cancel crop
-    if (e.key === 'Escape' && isCropDragging) {
+    // Escape — cancel crop (pending rect or active drag)
+    if (e.key === 'Escape' && (isCropDragging || cropPendingRect)) {
       e.preventDefault();
       isCropDragging = false;
       cropStartImg = null;
       cropEndImg = null;
+      cropPendingRect = null;
       engine.renderCropOverlay(null);
       setStatusMessage('Crop cancelled', false);
       return;
@@ -917,6 +920,7 @@ async function init() {
   let isCropDragging = false;
   let cropStartImg = null;
   let cropEndImg = null;
+  let cropPendingRect = null;  // rect waiting for Enter/click to confirm
 
   // Text tool — reference to active textarea (if any).
   let pendingTextArea = null;
@@ -967,6 +971,20 @@ async function init() {
 
     // Crop.
     if (tool === 'crop') {
+      if (cropPendingRect) {
+        // Click inside pending rect → confirm crop
+        if (imgPt.x >= cropPendingRect.x && imgPt.x <= cropPendingRect.x + cropPendingRect.width &&
+            imgPt.y >= cropPendingRect.y && imgPt.y <= cropPendingRect.y + cropPendingRect.height) {
+          const r = cropPendingRect;
+          cropPendingRect = null;
+          engine.renderCropOverlay(null);
+          applyCrop(r);
+          return;
+        }
+        // Click outside → clear pending, start new crop
+        cropPendingRect = null;
+        engine.renderCropOverlay(null);
+      }
       isCropDragging = true;
       cropStartImg = imgPt;
       cropEndImg = imgPt;
@@ -1296,14 +1314,19 @@ async function init() {
       return;
     }
 
-    // Crop drag ends on mouseup — apply immediately.
+    // Crop drag ends on mouseup — show selection, wait for Enter/click to confirm.
     if (isCropDragging && cropStartImg) {
       isCropDragging = false;
       const r = normalizeRect(cropStartImg.x, cropStartImg.y, imgPt.x, imgPt.y);
       cropStartImg = null;
       cropEndImg = null;
-      engine.renderCropOverlay(null);
-      if (r.width > 2 && r.height > 2) await applyCrop(r);
+      if (r.width > 2 && r.height > 2) {
+        cropPendingRect = r;
+        engine.renderCropOverlay(r);
+        setStatusMessage('Enter or click to crop, Escape to cancel');
+      } else {
+        engine.renderCropOverlay(null);
+      }
     }
   });
 
