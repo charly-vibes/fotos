@@ -1,8 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_server_host": "127.0.0.1",
+  "dolt_mode": "embedded",
   "dolt_database": "fotos",
   "project_id": "1377c819-561d-41ef-bb96-641d28f8ce15"
 }
