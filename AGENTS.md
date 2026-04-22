@@ -69,155 +69,74 @@ to orient yourself.
 
 Detected workflow tools:
 - **wai** — research, reasoning, and design decisions
-- **beads (bd)** — issue tracking (tasks, bugs, dependencies)
+- **beads** — issue tracking (tasks, bugs, dependencies). CLI command: **`bd`** (not `beads`)
 - **openspec** — specifications and change proposals (see `openspec/AGENTS.md`)
 
-## When to Use What
+> **CRITICAL**: Apply TDD and Tidy First throughout — not just when writing code:
+> - **Planning/task creation**: each ticket should map to a red→green→refactor cycle; refactoring tasks must be separate tickets from feature tasks.
+> - **Design**: define the test shape (inputs/outputs) before designing the implementation.
+> - **Implementation**: write the failing test first, then make it pass, then tidy in a separate commit.
 
-| Need | Tool | Example |
-|------|------|---------|
-| Record reasoning/research | wai | `wai add research "findings"` |
-| Capture design decisions | wai | `wai add design "architecture choice"` |
-| Session context transfer | wai | `wai handoff create <project>` |
-| Track work items/bugs | beads | `bd create --title="..." --type=task` |
-| Find available work | beads | `bd ready` |
-| Manage dependencies | beads | `bd dep add <blocked> <blocker>` |
-| Propose system changes | openspec | Read `openspec/AGENTS.md` |
-| Define requirements | openspec | `openspec validate --strict` |
+> **When beginning research or creating a ticket**: run `wai search "<topic>"` to check for existing patterns before writing new content.
 
-Key distinction:
-- **wai** = *why* decisions were made (reasoning, context, handoffs)
-- **beads** = *what* needs to be done (concrete tasks, status tracking)
-- **openspec** = *what the system should look like* (specs, requirements, proposals)
+## Quick Start
 
-## Starting a Session
+1. `wai sync` — ensure agent tools are projected
+2. `wai status` — see active projects, phase, and suggestions
+3. `bd ready` — find available work items
 
-1. Run `wai status` to see active projects, current phase, and suggestions.
-2. Run `bd ready` to find available work items.
-3. Check `openspec list` for active change proposals.
-4. Check the phase — it tells you what kind of work is expected:
-   - **research** → gather information, explore options
-   - **design** → make architectural decisions
-   - **plan** → break work into tasks
-   - **implement** → write code, guided by research/plans
-   - **review** → validate against plans
-   - **archive** → wrap up
-5. Read existing artifacts with `wai search "<topic>"` before starting new work.
-
-## Capturing Work
-
-Record the reasoning behind your work, not just the output:
-
-```bash
-wai add research "findings"         # What you learned, trade-offs
-wai add plan "approach"             # How you'll implement, why
-wai add design "decisions"          # Architecture choices, rationale
-wai add research --file notes.md    # Import longer content
-```
-
-Use `--project <name>` if multiple projects exist. Otherwise wai picks the first one.
-
-Phases are a guide, not a gate. Use `wai phase show` / `wai phase next`.
-
-## Ending a Session
-
-Before saying "done", run this checklist:
-
-```
-[ ] wai handoff create <project>   # capture context for next session
-[ ] bd close <id>                  # mark completed issues
-[ ] bd sync --from-main            # pull beads updates
-[ ] wai reflect                    # update CLAUDE.md with project patterns (every ~5 sessions)
-[ ] git add <files> && git commit  # commit code + handoff
-```
-
-### Autonomous Loop
-
-One task per session. The resume loop:
-
-1. `wai prime` — orient (shows ⚡ RESUMING if mid-task)
-2. Work on the single task
-3. `wai close` — capture state (run this before every `/clear`)
-4. `git add <files> && git commit`
-5. `/clear` — fresh context
-
-→ Next session: `wai prime` shows RESUMING with exact next steps.
-
-When context reaches ~40%: run `wai close`, then `/clear`.
+When context reaches ~40%: stop and tell the user — responses degrade past
+this point. Recommend `wai close` then `/clear` to resume cleanly.
 Do NOT skip `wai close` — it enables resume detection.
 
-## Quick Reference
+## Detailed Instructions
 
-### wai
-```bash
-wai status                    # Project status and next steps
-wai add research "notes"      # Add research artifact
-wai add plan "plan"           # Add plan artifact
-wai add design "design"       # Add design artifact
-wai search "query"            # Search across artifacts
-wai why "why use TOML?"       # Ask why (LLM-powered oracle)
-wai why src/config.rs         # Explain a file's history
-wai reflect                   # Synthesize project patterns into CLAUDE.md
-wai handoff create <project>  # Session handoff
-wai phase show                # Current phase
-wai doctor                    # Workspace health
-```
-
-### beads
-```bash
-bd ready                     # Available work
-bd show <id>                 # Issue details
-bd create --title="..."      # New issue
-bd update <id> --status=in_progress
-bd close <id>                # Complete work
-```
-
-### openspec
-Read `openspec/AGENTS.md` for full instructions.
-```bash
-openspec list              # Active changes
-openspec list --specs      # Capabilities
-```
-
-## Structure
-
-The `.wai/` directory organizes artifacts using the PARA method:
-- **projects/** — active work with phase tracking and dated artifacts
-- **areas/** — ongoing responsibilities (no end date)
-- **resources/** — reference material, agent configs, templates
-- **archives/** — completed or inactive items
-
-Do not edit `.wai/config.toml` directly. Use `wai` commands instead.
+Full workflow reference — session lifecycle, capturing work, command cheat
+sheets, cross-tool sync, and PARA structure — lives in **`.wai/AGENTS.md`**.
+Read it at the start of your first session or when you need detailed guidance.
 
 Keep this managed block so `wai init` can refresh the instructions.
 
 <!-- WAI:END -->
 
+<!-- WAI:REFLECT:REF:START -->
+## Accumulated Project Patterns
+
+Project-specific conventions, gotchas, and architecture notes live in
+`.wai/resources/reflections/`. Run `wai search "<topic>"` to retrieve relevant
+context before starting research or creating tickets.
+
+> **Before research or ticket creation**: always run `wai search "<topic>"` to
+> check for known patterns. Do not rediscover what is already documented.
+<!-- WAI:REFLECT:REF:END -->
+
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, complete ALL steps below.
 
-**Note:** This project uses ephemeral branches — code is merged to `main` locally, not pushed to a remote. The beads issue tracker lives in the repo and is synced via `bd sync --from-main`.
+**Note:** This project uses ephemeral branches — code is merged to `main` locally, not pushed to a remote. For any beads follow-up beyond closing issues, run `bd` and use the commands your installed version offers.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** — create beads issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) — `just check`, `just lint`, `just test`, `just spec-validate`
 3. **Update issue status** — close finished work (`bd close <id>`), update in-progress items
-4. **Commit and sync:**
+4. **Commit and review tracker state:**
    ```bash
    git status                  # review what changed
    git add <files>             # stage code changes
-   bd sync --from-main         # pull beads updates from main
    git commit -m "..."         # commit code + beads state together
    ```
+   If beads needs any extra follow-up beyond `bd close`, run `bd` and use the
+   commands your installed version offers.
 5. **Create a handoff** — `wai handoff create tracer-bullet` so the next session has context
 6. **Verify** — `git status` shows a clean working tree
 
 **CRITICAL RULES:**
 - NEVER say "done" before committing your changes
 - Do NOT use `git push` — this repo has no upstream remote; merges happen locally
-- Run `bd sync --from-main` before committing to avoid beads conflicts
+- If you need beads follow-up beyond `bd close`, inspect the installed CLI with `bd`
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
