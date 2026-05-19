@@ -43,7 +43,23 @@ jobs:
         run: cargo doc --workspace --no-deps
 
       - name: Add redirect index
-        run: echo '<meta http-equiv="refresh" content="0; url=fotos_lib/index.html">' > target/doc/index.html
+        run: |
+          cat > target/doc/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=fotos_lib/index.html">
+          <title>fotos — docs</title>
+          </head>
+          <body>
+          <p>Redirecting to <a href="fotos_lib/index.html">fotos docs</a>…</p>
+          <footer style="margin-top:2rem;font-size:0.8rem;opacity:0.5;">
+            <a href="https://github.com/charly-vibes/fotos">GitHub</a>
+          </footer>
+          </body>
+          </html>
+          EOF
 
       - name: Copy llms.txt
         run: cp llms.txt target/doc/llms.txt
