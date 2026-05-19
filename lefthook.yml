@@ -16,30 +16,7 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
-    clippy:
-      glob: "*.rs"
-      run: |
-        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q fedora; then
-          RUN="distrobox enter fedora --"
-        else
-          RUN=""
-        fi
-        triple=$($RUN rustc -vV | grep '^host:' | cut -d' ' -f2)
-        touch "src-tauri/fotos-mcp-${triple}"
-        $RUN cargo clippy --workspace -- -D warnings
-        ret=$?
-        rm -f src-tauri/fotos-mcp-*-unknown-*
-        exit $ret
+    lint:
+      run: just lint
     test:
-      run: |
-        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q fedora; then
-          RUN="distrobox enter fedora --"
-        else
-          RUN=""
-        fi
-        triple=$($RUN rustc -vV | grep '^host:' | cut -d' ' -f2)
-        touch "src-tauri/fotos-mcp-${triple}"
-        $RUN cargo test --workspace
-        ret=$?
-        rm -f src-tauri/fotos-mcp-*-unknown-*
-        exit $ret
+      run: just test
