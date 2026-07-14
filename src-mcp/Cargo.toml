@@ -3,6 +3,10 @@ name = "fotos-mcp"
 version = "0.3.0"
 edition = "2021"
 description = "MCP server for Fotos — AI-powered screenshot tool"
+license = "EPL-2.0"
+repository = "https://github.com/charly-vibes/fotos"
+keywords = ["mcp", "screenshot", "ai", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "fotos-mcp"
