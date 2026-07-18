@@ -1,0 +1,6 @@
+id = "portal-backend-falls-back-gracefully-when-portal-is-unavailable"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

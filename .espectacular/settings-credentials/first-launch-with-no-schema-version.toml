@@ -1,0 +1,6 @@
+id = "first-launch-with-no-schema-version"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

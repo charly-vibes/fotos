@@ -1,0 +1,6 @@
+id = "fallback-to-x11-when-session-type-unknown"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

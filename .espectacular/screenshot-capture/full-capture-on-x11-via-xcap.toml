@@ -1,0 +1,6 @@
+id = "full-capture-on-x11-via-xcap"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

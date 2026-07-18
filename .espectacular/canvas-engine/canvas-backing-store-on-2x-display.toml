@@ -1,0 +1,6 @@
+id = "canvas-backing-store-on-2x-display"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

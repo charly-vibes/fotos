@@ -1,0 +1,6 @@
+id = "crop-the-image-to-a-selected-region"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"

@@ -1,0 +1,6 @@
+id = "dimensions-update-on-screenshot-load"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"
