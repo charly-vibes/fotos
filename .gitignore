@@ -49,3 +49,6 @@ fotos-gnome-extension.zip
 
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+
+# testaruda store (local SQLite DB)
+.testaruda/

@@ -19,4 +19,11 @@ pre-push:
     lint:
       run: just lint
     test:
-      run: just test
+      # Run only affected tests via testaruda (falls back to full cargo test)
+      # Runs inside the fedora distrobox when available
+      run: |
+        if command -v distrobox &>/dev/null && distrobox list 2>/dev/null | grep -q fedora; then
+          distrobox enter fedora -- testaruda-pre-push
+        else
+          testaruda-pre-push
+        fi
