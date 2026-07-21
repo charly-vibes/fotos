@@ -123,6 +123,10 @@ test: ensure-sidecar
 spec-validate:
     openspec validate --all
 
+# Validate spec-test correspondence (requires ah)
+validate:
+    ah check
+
 # List all OpenSpec capabilities
 spec-list:
     openspec show --all
